@@ -25,10 +25,6 @@ The configuration file `config.yaml` contains the following sections:
 The main configuration is specified in the `main` section:
 ```yaml
 main:
-  # Interval at which the updates are checked and published.
-  # The interval must be specified in the format [number][unit]
-  # where [number] is a positive integer and [unit] is one of s (seconds)
-  # m (minutes), h (hours), d (days), w (weeks).
   interval: "15m"
 ```
 The `interval` parameter specifies the frequency at which updates are checked and published to the MQTT broker. The interval must be in the format `[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks).
