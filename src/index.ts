@@ -27,32 +27,32 @@ const checkAndPublishUpdates = async (): Promise<void> => {
   for (const container of containers) {
     const image = container.Config.Image;
     const imageInfo = await DockerService.getImageInfo(image);
-    const currentVersion = imageInfo.RepoTags;
+    const currentTags = imageInfo.RepoTags.map(tag => tag.split(":")[1]);
 
-    let newVersion = cache.get(image);
-    if (!newVersion) {
-      const response: AxiosResponse<RepositoryTagsResponse> = await axios.get(
-        `https://registry.hub.docker.com/v2/repositories/${image}/tags/list`,
-        {
-          headers: {
-            Authorization: `Bearer ${config.dockerhub.token}`,
-          },
-        }
+    for (const currentTag of currentTags) {
+      const response = await axios.get(
+        `https://registry.hub.docker.com/v2/repositories/library/${image}/tags?name=${currentTag}`
       );
-      const tags = response.data.results.map((r) => r.name);
-      newVersion = tags[0];
-      cache.set(image, newVersion);
-    }
+      if (response.data.results[0].images) {
+        const newDigest = response.data.results[0].digest;
+        const previousDigest = imageInfo.RepoDigests.find(d => d.endsWith(`:${currentTag}`));
 
-    if (newVersion !== currentVersion[0]) {
-      client.publish(
-        `${config.mqtt.topic}/${image}`,
-        `${currentVersion} -> ${newVersion}`,
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.config,
+        if (!imageInfo.RepoDigests.find(d => d.endsWith(`@${newDigest}`))) {
+          console.debug(`New version available`);
+          client.publish(
+            `${config.mqtt.topic}/${image}`,
+            `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
+            {
+              qos: config.mqtt.qos,
+              retain: config.mqtt.retain,
+            }
+          );
+        } else {
+          console.debug(`Image ${image}:${currentTag} is up-to-date`);
         }
-      );
+      } else {
+        console.debug(`No information found for image: ${image}:${currentTag}`);
+      }
     }
   }
 };
@@ -67,6 +67,8 @@ const startInterval = () => {
 };
 
 client.on("connect", () => {
+  checkAndPublishUpdates();
+
   if (config.mqtt.ha_discovery) {
     // TODO: Add homeassistant discovery
     // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
