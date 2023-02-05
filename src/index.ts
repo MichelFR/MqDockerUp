@@ -23,9 +23,11 @@ interface RepositoryTagsResponse {
 }
 
 const checkAndPublishUpdates = async (): Promise<void> => {
+  console.log("🔍 Checking for updates...");
   const containers = await DockerService.listContainers();
   for (const container of containers) {
     const image = container.Config.Image;
+    console.log(`🔍 Checking image: ${image}`);
     const imageInfo = await DockerService.getImageInfo(image);
     const currentTags = imageInfo.RepoTags.map(tag => tag.split(":")[1]);
 
@@ -38,7 +40,7 @@ const checkAndPublishUpdates = async (): Promise<void> => {
         const previousDigest = imageInfo.RepoDigests.find(d => d.endsWith(`:${currentTag}`));
 
         if (!imageInfo.RepoDigests.find(d => d.endsWith(`@${newDigest}`))) {
-          console.debug(`New version available`);
+          console.debug(`🚨 New version available`);
           client.publish(
             `${config.mqtt.topic}/${image}`,
             `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
@@ -48,10 +50,10 @@ const checkAndPublishUpdates = async (): Promise<void> => {
             }
           );
         } else {
-          console.debug(`Image ${image}:${currentTag} is up-to-date`);
+          console.debug(`🟢 Image ${image}:${currentTag} is up-to-date`);
         }
       } else {
-        console.debug(`No information found for image: ${image}:${currentTag}`);
+        console.debug(`🔍 No information found for image: ${image}:${currentTag}`);
       }
     }
   }
@@ -60,25 +62,38 @@ const checkAndPublishUpdates = async (): Promise<void> => {
 let intervalId: NodeJS.Timeout;
 
 const startInterval = () => {
+  const intervalDuration = TimeService.parseDuration(config.main.interval);
   intervalId = setInterval(
     checkAndPublishUpdates,
     TimeService.parseDuration(config.main.interval)
   );
+  console.debug(`🕒 Next check at ${new Date(Date.now() + intervalDuration)}`);
+  console.debug(`🕒 Next check in ${TimeService.formatDuration(intervalDuration)}`);
 };
 
 client.on("connect", () => {
+  console.log("🚀 Connected to MQTT broker");
   checkAndPublishUpdates();
 
   if (config.mqtt.ha_discovery) {
+    console.log("🔍 HomeAssistant discovery activated");
     // TODO: Add homeassistant discovery
     // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
+  } else {
+    console.log("🔍 HomeAssistant discovery not activated");
   }
 
   startInterval();
 });
 
+client.on("error", (error) => {
+  console.error("💥 Could not connect to MQTT server:");
+  console.error(error);
+});
+
 process.on("SIGINT", () => {
   clearInterval(intervalId);
-  console.log(`MqDockerUp stopped at ${new Date().toLocaleString()}`);
+  client.end();
+  console.log(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
   process.exit();
 });
