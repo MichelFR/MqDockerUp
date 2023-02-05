@@ -18,7 +18,6 @@ const checkAndPublishUpdates = async (): Promise<void> => {
   const containers = await DockerService.listContainers();
   for (const container of containers) {
     const image = container.Config.Image;
-    console.log(`🔍 Checking image: ${image}`);
     const imageInfo = await DockerService.getImageInfo(image);
     const currentTags = imageInfo.RepoTags.map(tag => tag.split(":")[1]);
 
@@ -48,6 +47,9 @@ const checkAndPublishUpdates = async (): Promise<void> => {
       }
     }
   }
+
+  console.debug("🔍 Finished checking for updates");
+  console.debug(`🕒 Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
 };
 
 let intervalId: NodeJS.Timeout;
@@ -58,20 +60,19 @@ const startInterval = () => {
     checkAndPublishUpdates,
     TimeService.parseDuration(config.main.interval)
   );
-  console.debug(`🕒 Next check at ${new Date(Date.now() + intervalDuration)}`);
-  console.debug(`🕒 Next check in ${TimeService.formatDuration(intervalDuration)}`);
+  console.debug(`🔁 Checking for updates every ${intervalDuration / 1000} seconds`);
 };
 
 client.on("connect", () => {
-  console.log("🚀 Connected to MQTT broker");
+  console.debug("🚀 Connected to MQTT broker");
   checkAndPublishUpdates();
 
   if (config.mqtt.ha_discovery) {
-    console.log("🔍 HomeAssistant discovery activated");
+    console.debug("🔍 HomeAssistant discovery activated");
     // TODO: Add homeassistant discovery
     // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
   } else {
-    console.log("🔍 HomeAssistant discovery not activated");
+    console.debug("🔍 HomeAssistant discovery not activated");
   }
 
   startInterval();
@@ -81,13 +82,13 @@ client.on("error", (error) => {
   console.error("💥 Could not connect to MQTT server:");
   console.error(error);
   clearInterval(intervalId);
-  console.log(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
+  console.debug(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
   process.exit();
 });
 
 process.on("SIGINT", () => {
   clearInterval(intervalId);
   client.end();
-  console.log(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
+  console.debug(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
   process.exit();
 });
