@@ -4,7 +4,7 @@
 
 Mqtt Docker Updater (MqDockerUp) is a tool for updating Docker containers. It provides an easy way to check for updates and publish changes to a MQTT broker. The goal of this project is to provide an easy and seamless way of updating containers.
 
-In the future, it may also be a tool for updating Home Assistant, making it as easy as updating Hass.IO. The plan is to implement Home Assistant discovery and Home Assistant UpdateEntities support to allow for a single click update in the Home Assistant UI.
+  In the future, it may also be a tool for updating `Home Assistant Container`, making it as easy as updating Hass.IO. The plan is to implement Home Assistant discovery and Home Assistant UpdateEntities support to allow for a single click update in the Home Assistant UI.
 
 The project is open-source and any help is welcome. It is also planned to containerize MqDockerUp itself in the future.
 
