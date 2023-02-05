@@ -1,0 +1,35 @@
+name: Update node_modules
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # runs every day at midnight
+
+jobs:
+  update_node_modules:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: npm i
+
+    - name: Update node_modules
+      run: npm install
+
+    - name: Commit changes
+      run: |
+        git add .
+        git config --global user.email "github-actions@example.com"
+        git config --global user.name "GitHub Actions"
+        git commit -m "chore: update node_modules"
+
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v2
+      with:
+        commit-message: 'chore: update node_modules'
+        title: 'Update node_modules'
+        body: 'This pull request updates the node_modules to the latest version'
+        labels: 'dependencies, update'
+        branch: 'update-node-modules'
