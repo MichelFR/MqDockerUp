@@ -89,6 +89,9 @@ client.on("connect", () => {
 client.on("error", (error) => {
   console.error("💥 Could not connect to MQTT server:");
   console.error(error);
+  clearInterval(intervalId);
+  console.log(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
+  process.exit();
 });
 
 process.on("SIGINT", () => {
