@@ -1,7 +1,7 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
 
-export class DockerService {
+export default class DockerService {
   private static docker = new Docker();
 
   public static async listContainers(): Promise<ContainerInspectInfo[]> {
@@ -23,5 +23,3 @@ export class DockerService {
     return await DockerService.docker.getImage(imageId).inspect();
   }
 }
-
-export default DockerService;
