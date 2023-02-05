@@ -12,15 +12,6 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   connectTimeout: config.mqtt.connectTimeout,
   clientId: config.mqtt.clientId,
 });
-const cache = new Map();
-
-interface Result {
-  name: string;
-}
-
-interface RepositoryTagsResponse {
-  results: Result[];
-}
 
 const checkAndPublishUpdates = async (): Promise<void> => {
   console.log("🔍 Checking for updates...");
