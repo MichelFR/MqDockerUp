@@ -61,19 +61,6 @@ The `mqtt` section contains the following parameters:
 - `qos`: The MQTT Quality of Service level to use when publishing updates.
 - `retain`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
 
-### Docker Configuration
-The Docker configuration is specified in the `docker` section:
-```yaml
-docker:
-  dockerhub:
-    token: YOUR_AUTH_TOKEN_HERE
-```
-The docker section contains the Docker Hub configuration, which consists of the following parameter:
-
-`token`: The Docker registry API token to use when checking for updates to the specified Docker image.
-You will need to replace `YOUR_AUTH_TOKEN_HERE` with your actual Docker registry API token.
-
-
 ## Contribute
 
 This project is open source and contributions are welcome. If you have any ideas or suggestions, please open an issue or a pull request.
