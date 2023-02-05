@@ -32,7 +32,12 @@ const checkAndPublishUpdates = async (): Promise<void> => {
     let newVersion = cache.get(image);
     if (!newVersion) {
       const response: AxiosResponse<RepositoryTagsResponse> = await axios.get(
-        `https://registry.hub.docker.com/v2/repositories/${image}/tags/list` // TODO: Currently broken, add authorization
+        `https://registry.hub.docker.com/v2/repositories/${image}/tags/list`,
+        {
+          headers: {
+            Authorization: `Bearer ${config.dockerhub.token}`,
+          },
+        }
       );
       const tags = response.data.results.map((r) => r.name);
       newVersion = tags[0];
