@@ -15,7 +15,7 @@ MqDockerUp uses Docker APIs to get information about containers and images. It t
 
 1. Clone the repository and install dependencies with `npm install`.
 2. Change the `config.yaml` file with your desired configuration.
-3. Run the project with `npm start`.
+3. Run the project with `npm run start`.
 
 ## Configuration
 
