@@ -17,6 +17,3 @@ mqtt:
   protocolVersion: 5
   qos: 2
   retain: false
-docker:
-  dockerhub:
-    token: YOUR_AUTH_TOKEN_HERE
