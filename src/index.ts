@@ -60,7 +60,7 @@ const startInterval = () => {
     checkAndPublishUpdates,
     TimeService.parseDuration(config.main.interval)
   );
-  console.debug(`🔁 Checking for updates every ${intervalDuration / 1000} seconds`);
+  console.debug(`🔁 Checking for updates every ${config.main.interval}`);
 };
 
 client.on("connect", () => {
