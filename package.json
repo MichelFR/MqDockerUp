@@ -6,10 +6,10 @@
   "scripts": {
     "test": "echo 'No tests defined yet.",
     "watch": "tsc -w",
-    "build": "tsc",
+    "build": "npx tsc",
     "start": "node dist/src/index.js",
-    "start:build": "tsc && node dist/src/index.js",
-    "start:dev": "nodemon --watch 'src/*' -e ts --exec 'tsc && node dist/src/index.js'"
+    "start:build": "npx tsc && node dist/src/index.js",
+    "start:dev": "nodemon --watch 'src/*' -e ts --exec 'npx tsc && node dist/src/index.js'"
   },
   "author": "Michel Ferreira Ribeiro",
   "license": "MIT",
