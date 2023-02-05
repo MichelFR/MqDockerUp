@@ -17,9 +17,13 @@ export default class DockerService {
     );
   }
 
-  public static async getImageInfo(
-    imageId: string
-  ): Promise<Docker.ImageInspectInfo> {
+  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo> {
     return await DockerService.docker.getImage(imageId).inspect();
+  }
+
+  public static async updateContainer(containerId: string, imageId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    const updatedContainer = await container.update({ Image: imageId });
+    return updatedContainer;
   }
 }
