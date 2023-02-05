@@ -1,3 +1,4 @@
+[![Docker Image CI](https://github.com/MichelFR/MqDockerUp/actions/workflows/docker-image.yml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/docker-image.yml)
 # MqDockerUp
 
 Mqtt Docker Updater (MqDockerUp) is a tool for updating Docker containers. It provides an easy way to check for updates and publish changes to a MQTT broker. The goal of this project is to provide an easy and seamless way of updating containers.
