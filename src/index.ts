@@ -31,7 +31,7 @@ const checkAndPublishUpdates = async (): Promise<void> => {
         const previousDigest = imageInfo.RepoDigests.find(d => d.endsWith(`:${currentTag}`));
 
         if (!imageInfo.RepoDigests.find(d => d.endsWith(`@${newDigest}`))) {
-          console.debug(`🚨 New version available`);
+          console.debug(`🚨 New version available for image ${image}`);
           client.publish(
             `${config.mqtt.topic}/${image}`,
             `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
