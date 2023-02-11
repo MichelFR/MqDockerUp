@@ -18,12 +18,13 @@ const checkAndPublishUpdates = async (): Promise<void> => {
   const containers = await DockerService.listContainers();
   for (const container of containers) {
     const image = container.Config.Image;
+    const imageWithoutTags = container.Config.Image.split(":")[0];
     const imageInfo = await DockerService.getImageInfo(image);
     const currentTags = imageInfo.RepoTags.map(tag => tag.split(":")[1]);
 
     for (const currentTag of currentTags) {
       const response = await axios.get(
-        `https://registry.hub.docker.com/v2/repositories/library/${image}/tags?name=${currentTag}`
+        `https://registry.hub.docker.com/v2/repositories/${imageWithoutTags}/tags?name=${currentTag}`
       );
       if (response.data.results[0].images) {
         const newDigest = response.data.results[0].digest;
