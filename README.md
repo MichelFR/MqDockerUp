@@ -14,9 +14,17 @@ MqDockerUp uses Docker APIs to get information about containers and images. It t
 
 ## How to use
 
+### Standalone application
+
 1. Clone the repository and install dependencies with `npm install`.
 2. Change the `config.yaml` file with your desired configuration.
 3. Run the project with `npm run start`.
+
+### Docker container
+
+1. Pull the image from Docker Hub with `docker pull micrib/mqdockerup`.
+2. Mount the docker.sock file to the container with `docker run -v /var/run/docker.sock:/var/run/docker.sock micrib/mqdockerup`.
+3. Optionally, you can use environment variables to override the values in the config file. See the [Environment Variables](#environment-variables) section for more details.
 
 ## Configuration
 
