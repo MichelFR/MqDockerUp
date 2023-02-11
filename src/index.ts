@@ -5,6 +5,7 @@ import DockerService from "./services/DockerService";
 import TimeService from "./services/TimeService";
 
 const config = ConfigService.getConfig();
+const packageJson = require("../../package.json");
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
   password: config.mqtt.password,
@@ -32,14 +33,16 @@ const checkAndPublishUpdates = async (): Promise<void> => {
 
         if (!imageInfo.RepoDigests.find(d => d.endsWith(`@${newDigest}`))) {
           console.debug(`🚨 New version available for image ${image}`);
-          client.publish(
-            `${config.mqtt.topic}/${image}`,
-            `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
-            {
-              qos: config.mqtt.qos,
-              retain: config.mqtt.retain,
-            }
-          );
+          if (!config.mqtt.ha_discovery) {
+            client.publish(
+              `${config.mqtt.topic}/${image}`,
+              `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
+              {
+                qos: config.mqtt.qos,
+                retain: config.mqtt.retain,
+              }
+            );
+          }
         } else {
           console.debug(`🟢 Image ${image}:${currentTag} is up-to-date`);
         }
@@ -64,14 +67,72 @@ const startInterval = () => {
   console.debug(`🔁 Checking for updates every ${config.main.interval}`);
 };
 
-client.on("connect", () => {
+
+client.on("connect", async () => {
   console.debug("🚀 Connected to MQTT broker");
   checkAndPublishUpdates();
 
   if (config.mqtt.ha_discovery) {
-    console.debug("🔍 HomeAssistant discovery activated");
-    // TODO: Add homeassistant discovery
-    // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
+    console.debug("🔍 HomeAssistant discovery activated");    
+    const containers = await DockerService.listContainers();
+
+    
+    client.publish(
+      `${config.mqtt.topic}/availability`,
+      "online",
+      {
+        retain: true
+      }
+    );
+
+    function replaceSlashes(str: string): string {
+      return str.replace(/\//g, "_");
+    }
+
+    for (const container of containers) {
+      const image = container.Config.Image;
+      const imageWithoutTags = container.Config.Image.split(":")[0];
+      const imageInfo = await DockerService.getImageInfo(image);
+      const currentTag = image.split(":")[1];
+      const imageWithoutTagsAndSlashes = replaceSlashes(imageWithoutTags);
+    
+      // Generate a mqtt message creating homeassistant entities
+      const payload = {
+        "name": `Docker Image`,
+        "unique_id": `${image}`,
+        "state_topic": `${config.mqtt.topic}/${imageWithoutTagsAndSlashes}`,
+        "availability": [
+          {
+              "topic": `${config.mqtt.topic}/availability`
+          }
+        ],
+        "device": {
+          "manufacturer": "MqDockerUp",
+          "model": image,
+          "name": imageWithoutTags,
+          "sw_version": packageJson.version,
+          "sa": "docker",
+          "identifiers": [
+            `${imageWithoutTags}_${currentTag}`
+          ]
+        },
+        "icon": "mdi:docker"
+      };
+
+      // Publish the message to the homeassistant discovery topic
+      client.publish(
+        `homeassistant/sensor/${imageWithoutTagsAndSlashes}_${currentTag}/sensor/config`,
+        JSON.stringify(payload),
+        {retain: true}
+      );
+     
+      client.publish(
+        `${config.mqtt.topic}/${imageWithoutTagsAndSlashes}`,
+        imageWithoutTags,
+        {retain: true}
+      );
+    }
+
   } else {
     console.debug("🔍 HomeAssistant discovery not activated");
   }
@@ -80,16 +141,22 @@ client.on("connect", () => {
 });
 
 client.on("error", (error) => {
-  console.error("💥 Could not connect to MQTT server:");
-  console.error(error);
+  console.error("💥 Could not connect to MQTT server.");
   clearInterval(intervalId);
-  console.debug(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
-  process.exit();
+  console.debug(`🛑 MqDockerUp stopped due to an error, at ${new Date().toLocaleString()}`);
+  process.exit(0);
 });
 
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   clearInterval(intervalId);
-  client.end();
+  await client.publish(
+    `${config.mqtt.topic}/availability`,
+    "offline",
+    {
+      retain: true
+    }
+  );
+
   console.debug(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
-  process.exit();
+  process.exit(0);
 });
