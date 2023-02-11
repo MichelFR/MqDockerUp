@@ -68,6 +68,8 @@ client.on("connect", () => {
     console.debug("🔍 HomeAssistant discovery activated");
     // Create the entities for the containers
     HomeassistantService.createEntities(client);
+    // Subscribe to the update topics
+    client.subscribe(`${config.mqtt.topic}/+/+/update`);
   } else {
     console.debug("🔍 HomeAssistant discovery not activated");
   }
@@ -81,6 +83,17 @@ client.on("error", (error) => {
   clearInterval(intervalId);
   console.debug(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
   process.exit();
+});
+
+client.on("message", (topic, message) => {
+  console.debug(`📩 Received message on topic ${topic}`);
+  const [containerId, currentTag] = topic.split("/").slice(-3, -1);
+  DockerService.getContainer(containerId).then((container) => {
+    const image = container.Config.Image;
+    const imageInfo = DockerService.getImageInfo(image);
+    const newDigest = imageInfo.RepoDigests.find((d) => d.endsWith(`:${currentTag}`));
+    HomeassistantService.handleUpdate(container, currentTag, newDigest, client);
+  });
 });
 
 process.on("SIGINT", () => {
