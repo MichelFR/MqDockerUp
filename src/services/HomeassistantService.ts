@@ -4,7 +4,7 @@ import { DockerService } from "./DockerService";
 import { TimeService } from "./TimeService";
 import Docker from "dockerode";
 
-export class HomeassistantService {
+export default class HomeassistantService {
   public static createEntities(client: any) {
     DockerService.getContainers().then((containers) => {
       containers.forEach((container) => {
