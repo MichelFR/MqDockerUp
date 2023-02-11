@@ -1,256 +1,104 @@
-import ConfigService from "./ConfigService";
+import mqtt from "mqtt";
 import DockerService from "./DockerService";
+import ConfigService from "./ConfigService";
 
 const config = ConfigService.getConfig();
 
 export default class HomeassistantService {
-  // Create MQTT Homeassistant entity for the container
-  static createEntity(container: any, mqttClient: any): void {
-    if (config.mqtt.ha_discovery) {
-      const containerId = container.Id;
-      const containerName = container.Name;
-      const containerState = container.State;
-      const containerStatus = container.Status;
-      const containerImage = container.Config.Image;
-      const containerPorts = container.NetworkSettings.Ports;
-      const containerNetworks = container.NetworkSettings.Networks;
+  static createEntities(client: mqtt.MqttClient): void {
+    DockerService.listContainers().then((containers) => {
+      for (const container of containers) {
+        const image = container.Config.Image;
+        const imageInfo = DockerService.getImageInfo(image);
+        const currentTags = imageInfo.RepoTags.map((tag) => tag.split(":")[1]);
 
-      // Define the entity configuration
-      const entityConfig = {
-        name: containerName,
-        unique_id: containerId,
-        device_class: "problem",
-        state_topic: `${config.mqtt.topic}/${containerId}/state`,
-        json_attributes_topic: `${config.mqtt.topic}/${containerId}/attributes`,
-        availability_topic: `${config.mqtt.topic}/${containerId}/availability`,
-        payload_available: "online",
-        payload_not_available: "offline",
+        for (const currentTag of currentTags) {
+          const entity = {
+            name: `${container.Names[0].substring(1)}-${currentTag}`,
+            unique_id: `${container.Id}-${currentTag}`,
+            state_topic: `${config.mqtt.topic}/${container.Id}/${currentTag}/state`,
+            command_topic: `${config.mqtt.topic}/${container.Id}/${currentTag}/update`,
+            availability_topic: `${config.mqtt.topic}/availability`,
+            payload_available: "online",
+            payload_not_available: "offline",
+            icon: "mdi:docker",
+          };
+
+          client.publish(
+            `homeassistant/sensor/${container.Id}/${currentTag}/config`,
+            JSON.stringify(entity),
+            { retain: true }
+          );
+        }
+      }
+    });
+  }
+
+  static createUpdate(
+    container: Docker.ContainerInspectInfo,
+    currentTag: string,
+    previousDigest: string,
+    newDigest: string,
+    client: mqtt.MqttClient
+  ): void {
+    const update = {
+      state: "available",
+      attributes: {
+        friendly_name: `${container.Names[0].substring(1)}-${currentTag}`,
+        current_version: previousDigest,
+        new_version: newDigest,
+        update_available: true,
+        update_requested: false,
+      },
+    };
+
+    client.publish(
+      `${config.mqtt.topic}/${container.Id}/${currentTag}/state`,
+      JSON.stringify(update),
+      { retain: true }
+    );
+  }
+
+  static handleUpdate(
+    container: Docker.ContainerInspectInfo,
+    currentTag: string,
+    newDigest: string,
+    client: mqtt.MqttClient
+  ): void {
+    const update = {
+      state: "updating",
+      attributes: {
+        friendly_name: `${container.Names[0].substring(1)}-${currentTag}`,
+        current_version: container.RepoDigests.find((d) => d.endsWith(`:${currentTag}`)),
+        new_version: newDigest,
+        update_available: false,
+        update_requested: true,
+      },
+    };
+
+    client.publish(
+      `${config.mqtt.topic}/${container.Id}/${currentTag}/state`,
+      JSON.stringify(update),
+      { retain: true }
+    );
+
+    DockerService.updateContainer(container, currentTag, newDigest).then(() => {
+      const updated = {
+        state: "updated",
+        attributes: {
+          friendly_name: `${container.Names[0].substring(1)}-${currentTag}`,
+          current_version: newDigest,
+          new_version: newDigest,
+          update_available: false,
+          update_requested: false,
+        },
       };
 
-      // Publish the entity configuration to the discovery topic
-      mqttClient.publish(
-        `homeassistant/binary_sensor/${containerId}/config`,
-        JSON.stringify(entityConfig),
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
+      client.publish(
+        `${config.mqtt.topic}/${container.Id}/${currentTag}/state`,
+        JSON.stringify(updated),
+        { retain: true }
       );
-
-      // Publish the entity state to the state topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${containerId}/state`,
-        containerState === "running" ? "OFF" : "ON",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the entity attributes to the attributes topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${containerId}/attributes`,
-        JSON.stringify({
-          status: containerStatus,
-          image: containerImage,
-          ports: containerPorts,
-          networks: containerNetworks,
-        }),
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the entity availability to the availability topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${containerId}/availability`,
-        "online",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-    }
-  }
-
-  // Create MQTT Homeassistant entity for the update
-  static createUpdate(container: any, currentTag: string, previousDigest: string, newDigest: string, mqttClient: any): void {
-    if (config.mqtt.ha_discovery) {
-      const containerId = container.Id;
-      const containerName = container.Name;
-      const containerImage = container.Config.Image;
-
-      const updateId = `${containerId}_update`;
-      const updateName = `${containerName} Update`;
-
-      // Define the update entity configuration
-      const updateConfig = {
-        name: updateName,
-        unique_id: updateId,
-        device_class: "update",
-        state_topic: `${config.mqtt.topic}/${updateId}/state`,
-        json_attributes_topic: `${config.mqtt.topic}/${updateId}/attributes`,
-        availability_topic: `${config.mqtt.topic}/${updateId}/availability`,
-        payload_available: "online",
-        payload_not_available: "offline",
-      };
-
-      // Publish the update entity configuration to the discovery topic
-      mqttClient.publish(
-        `homeassistant/binary_sensor/${updateId}/config`,
-        JSON.stringify(updateConfig),
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the update entity state to the state topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${updateId}/state`,
-        "ON",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the update entity attributes to the attributes topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${updateId}/attributes`,
-        JSON.stringify({
-          image: containerImage,
-          current_tag: currentTag,
-          current_digest: previousDigest,
-          new_tag: currentTag,
-          new_digest: newDigest,
-        }),
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the update entity availability to the availability topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${updateId}/availability`,
-        "online",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-    }
-  }
-
-  // Update MQTT Homeassistant entity for the container
-  static updateEntity(container: any, mqttClient: any): void {
-    if (config.mqtt.ha_discovery) {
-      const containerId = container.Id;
-      const containerState = container.State;
-
-      // Publish the entity state to the state topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${containerId}/state`,
-        containerState === "running" ? "OFF" : "ON",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the entity availability to the availability topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${containerId}/availability`,
-        "online",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-    }
-  }
-
-  // Update MQTT Homeassistant entity for the update
-  static updateUpdate(container: any, currentTag: string, previousDigest: string, newDigest: string, mqttClient: any): void {
-    if (config.mqtt.ha_discovery) {
-      const containerId = container.Id;
-      const containerImage = container.Config.Image;
-
-      const updateId = `${containerId}_update`;
-
-      // Publish the update entity state to the state topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${updateId}/state`,
-        "ON",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the update entity attributes to the attributes topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${updateId}/attributes`,
-        JSON.stringify({
-          image: containerImage,
-          current_tag: currentTag,
-          current_digest: previousDigest,
-          new_tag: currentTag,
-          new_digest: newDigest,
-        }),
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-
-      // Publish the update entity availability to the availability topic
-      mqttClient.publish(
-        `${config.mqtt.topic}/${updateId}/availability`,
-        "online",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-    }
-  }
-
-  // Delete MQTT Homeassistant entity for the container
-  static deleteEntity(container: any, mqttClient: any): void {
-    if (config.mqtt.ha_discovery) {
-      const containerId = container.Id;
-
-      // Publish an empty message to the discovery topic to delete the entity
-      mqttClient.publish(
-        `homeassistant/binary_sensor/${containerId}/config`,
-        "",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-    }
-  }
-
-  // Delete MQTT Homeassistant entity for the update
-  static deleteUpdate(container: any, mqttClient: any): void {
-    if (config.mqtt.ha_discovery) {
-      const containerId = container.Id;
-
-      const updateId = `${containerId}_update`;
-
-      // Publish an empty message to the discovery topic to delete the update
-      mqttClient.publish(
-        `homeassistant/binary_sensor/${updateId}/config`,
-        "",
-        {
-          qos: config.mqtt.qos,
-          retain: config.mqtt.retain,
-        }
-      );
-    }
+    });
   }
 }
