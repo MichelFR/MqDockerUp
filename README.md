@@ -58,8 +58,6 @@ The `mqtt` section contains the following parameters:
 - `qos`: The MQTT Quality of Service level to use when publishing updates.
 - `retain`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
 
-Okay, here is just the part of the Environment Variables:
-
 ## Environment Variables
 
 You can also use environment variables to override the values in the config file. The environment variables must have the same name as the config keys, but in uppercase and with underscores instead of dots. For example, to override the `mqtt.connectionUri` value, you can set the `MQTT_CONNECTIONURI` environment variable. Here is the list of environment variables that you can use:
