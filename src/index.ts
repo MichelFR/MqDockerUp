@@ -3,6 +3,7 @@ import mqtt from "mqtt";
 import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
 import TimeService from "./services/TimeService";
+import HomeassistantService from "./services/HomeassistantService";
 
 const config = ConfigService.getConfig();
 const client = mqtt.connect(config.mqtt.connectionUri, {
@@ -31,14 +32,10 @@ const checkAndPublishUpdates = async (): Promise<void> => {
 
         if (!imageInfo.RepoDigests.find(d => d.endsWith(`@${newDigest}`))) {
           console.debug(`🚨 New version available`);
-          client.publish(
-            `${config.mqtt.topic}/${image}`,
-            `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
-            {
-              qos: config.mqtt.qos,
-              retain: config.mqtt.retain,
-            }
-          );
+          // Create the update entity for the container if config.mqtt.ha_discovery is true
+          if (config.mqtt.ha_discovery) {
+            HomeassistantService.createUpdate(container, currentTag, previousDigest, newDigest, client);
+          }
         } else {
           console.debug(`🟢 Image ${image}:${currentTag} is up-to-date`);
         }
@@ -69,8 +66,8 @@ client.on("connect", () => {
 
   if (config.mqtt.ha_discovery) {
     console.debug("🔍 HomeAssistant discovery activated");
-    // TODO: Add homeassistant discovery
-    // https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
+    // Create the entities for the containers
+    HomeassistantService.createEntities(client);
   } else {
     console.debug("🔍 HomeAssistant discovery not activated");
   }
