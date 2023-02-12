@@ -70,7 +70,7 @@ export default class HomeassistantService {
 
             // Docker Update
             topic = `homeassistant/update/${formatedImage}_${tag}/docker_update/config`;
-            payload = this.createUpdatePayload("Update: " + formatedImage, image, tag, "dockerUpdate", containerName);
+            payload = this.createUpdatePayload("Update: " + formatedImage, image, tag, "dockerUpdate", containerName, container.Id);
             this.publishMessage(client, topic, payload, true);
         }
     }
@@ -83,7 +83,7 @@ export default class HomeassistantService {
             const formatedImage = image.replace(/\//g, "_");
             const tag = container.Config.Image.split(":")[1];
             const containerName = container.Name.substring(1);
-            const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : "none"
+            const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : null;
             const imageInfo = await DockerService.getImageInfo(image+":"+tag);
             const currentDigest = imageInfo.RepoDigests[0].split(":")[1];
             let newDigest = null;
@@ -109,14 +109,11 @@ export default class HomeassistantService {
             // Update entity payload
             const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
             const updatePayload = JSON.stringify({
-                installed_version: currentDigest.substring(0, 12),
-                latest_version: newDigest ? newDigest?.substring(0, 12) : "unknown",
-                update_available: newDigest ? (currentDigest !== newDigest) : false,
+                installed_version: `${tag}: ${currentDigest.substring(0, 12)}`,
+                latest_version: newDigest ? `${tag}: ${currentDigest.substring(0, 13)}` : null,
                 release_notes: null,
                 release_url: "https://www.google.com/",
                 entity_picture: null,
-                command_topic: `${config.mqtt.topic}/update`,
-                payload_install: "install",
                 title: formatedImage
             });
 
@@ -142,6 +139,7 @@ export default class HomeassistantService {
 
         return {
             "object_id": name,
+            "name": name,
             "unique_id": `${image+tag+name}`,
             "state_topic": `${config.mqtt.topic}/${formatedImage}`,
             "device_class": deviceClass,
@@ -165,7 +163,7 @@ export default class HomeassistantService {
         };
     }
 
-    public static createUpdatePayload(name: string, image: string, tag: string, valueName: string, deviceName: string): object {
+    public static createUpdatePayload(name: string, image: string, tag: string, valueName: string, deviceName: string, containerId: any): object {
         const formatedImage = image.replace(/\//g, "_");
 
         return {
@@ -174,9 +172,9 @@ export default class HomeassistantService {
             "state_topic": `${config.mqtt.topic}/${formatedImage}/update`,
             "device_class": "firmware",
             "availability": [
-            {
-                "topic": `${config.mqtt.topic}/availability`
-            }
+                {
+                    "topic": `${config.mqtt.topic}/availability`
+                }
             ],
             "device": {
                 "manufacturer": "MqDockerUp",
@@ -188,7 +186,9 @@ export default class HomeassistantService {
                     `${image}_${tag}`
                 ]
             },
-            "icon": "mdi:docker"
+            "icon": "mdi:docker",
+            "payload_install": JSON.stringify({"containerId": containerId}),
+            "command_topic": `${config.mqtt.topic}/update`
         };
     }
 }
