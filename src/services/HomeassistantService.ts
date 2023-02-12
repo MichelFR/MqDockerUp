@@ -75,7 +75,7 @@ export default class HomeassistantService {
         }
     }
 
-    public static async publishInitialMessages(client: any) {
+    public static async publishMessages(client: any) {
         const containers = await DockerService.listContainers();
         
         for (const container of containers) {
@@ -94,6 +94,12 @@ export default class HomeassistantService {
                 newDigest = response.data.results[0]?.digest?.split(":")[1];
             }
 
+            if (currentDigest !== newDigest) {
+                console.debug(`🚨 New version available for image ${image}:${tag}`);
+            } else {
+                console.debug(`🟢 Image ${image}:${tag} is up-to-date`);
+            }
+
             const topic = `${config.mqtt.topic}/${formatedImage}`;
             const payload = JSON.stringify({
                 dockerImage: image,
@@ -110,9 +116,9 @@ export default class HomeassistantService {
             const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
             const updatePayload = JSON.stringify({
                 installed_version: `${tag}: ${currentDigest.substring(0, 12)}`,
-                latest_version: newDigest ? `${tag}: ${currentDigest.substring(0, 13)}` : null,
+                latest_version: newDigest ? `${tag}: ${currentDigest.substring(0, 12)}` : null,
                 release_notes: null,
-                release_url: "https://www.google.com/",
+                release_url: null,
                 entity_picture: null,
                 title: formatedImage
             });
