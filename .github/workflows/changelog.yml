@@ -1,0 +1,29 @@
+name: Generate Changelog
+
+on:
+  release:
+    types: [published]
+
+jobs:
+
+  changelog:
+    name: Create changelog file
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v3
+
+    - name: Install changelog generator
+      run: sudo gem install github_changelog_generator
+
+    - name: Generate changelog
+      run: github_changelog_generator -u ${{ github.repository_owner }} -p ${{ github.event.repository.name }} --token ${{ secrets.GITHUB_TOKEN }} --output CHANGELOG.md
+
+    - name: Commit and push changelog
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add CHANGELOG.md
+        git commit -m "Update changelog for ${{ github.event.release.tag_name }}"
+        git push
