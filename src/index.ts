@@ -2,6 +2,7 @@ import axios, { AxiosResponse } from "axios";
 import mqtt from "mqtt";
 import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
+import HomeassistantService from "./services/HomeassistantService";
 import TimeService from "./services/TimeService";
 
 const config = ConfigService.getConfig();
@@ -59,7 +60,6 @@ const checkAndPublishUpdates = async (): Promise<void> => {
 let intervalId: NodeJS.Timeout;
 
 const startInterval = () => {
-  const intervalDuration = TimeService.parseDuration(config.main.interval);
   intervalId = setInterval(
     checkAndPublishUpdates,
     TimeService.parseDuration(config.main.interval)
@@ -73,65 +73,10 @@ client.on("connect", async () => {
   checkAndPublishUpdates();
 
   if (config.mqtt.ha_discovery) {
-    console.debug("🔍 HomeAssistant discovery activated");    
-    const containers = await DockerService.listContainers();
-
-    
-    client.publish(
-      `${config.mqtt.topic}/availability`,
-      "online",
-      {
-        retain: true
-      }
-    );
-
-    function replaceSlashes(str: string): string {
-      return str.replace(/\//g, "_");
-    }
-
-    for (const container of containers) {
-      const image = container.Config.Image;
-      const imageWithoutTags = container.Config.Image.split(":")[0];
-      const imageInfo = await DockerService.getImageInfo(image);
-      const currentTag = image.split(":")[1];
-      const imageWithoutTagsAndSlashes = replaceSlashes(imageWithoutTags);
-    
-      // Generate a mqtt message creating homeassistant entities
-      const payload = {
-        "name": `Docker Image`,
-        "unique_id": `${image}`,
-        "state_topic": `${config.mqtt.topic}/${imageWithoutTagsAndSlashes}`,
-        "availability": [
-          {
-              "topic": `${config.mqtt.topic}/availability`
-          }
-        ],
-        "device": {
-          "manufacturer": "MqDockerUp",
-          "model": image,
-          "name": imageWithoutTags,
-          "sw_version": packageJson.version,
-          "sa": "docker",
-          "identifiers": [
-            `${imageWithoutTags}_${currentTag}`
-          ]
-        },
-        "icon": "mdi:docker"
-      };
-
-      // Publish the message to the homeassistant discovery topic
-      client.publish(
-        `homeassistant/sensor/${imageWithoutTagsAndSlashes}_${currentTag}/sensor/config`,
-        JSON.stringify(payload),
-        {retain: true}
-      );
-     
-      client.publish(
-        `${config.mqtt.topic}/${imageWithoutTagsAndSlashes}`,
-        imageWithoutTags,
-        {retain: true}
-      );
-    }
+    console.debug("🔍 HomeAssistant discovery activated");
+    HomeassistantService.publishAvailability(client, true);
+    HomeassistantService.publishConfigMessages(client);
+    HomeassistantService.publishInitialMessages(client);
 
   } else {
     console.debug("🔍 HomeAssistant discovery not activated");
@@ -144,19 +89,13 @@ client.on("error", (error) => {
   console.error("💥 Could not connect to MQTT server.");
   clearInterval(intervalId);
   console.debug(`🛑 MqDockerUp stopped due to an error, at ${new Date().toLocaleString()}`);
-  process.exit(0);
+  process.exit(1);
 });
 
 process.on("SIGINT", async () => {
   clearInterval(intervalId);
-  await client.publish(
-    `${config.mqtt.topic}/availability`,
-    "offline",
-    {
-      retain: true
-    }
-  );
+  HomeassistantService.publishAvailability(client, false);
 
-  console.debug(`🛑 MqDockerUp stopped at ${new Date().toLocaleString()}`);
+  console.debug(`🛑 MqDockerUp gracefully stopped at ${new Date().toLocaleString()}`);
   process.exit(0);
 });
