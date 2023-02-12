@@ -31,6 +31,11 @@ export default class ConfigService {
         config[key] = process.env[key] ?? config[key];
       }
 
+      // Override the mqtt values with the environment variables
+      for (const key of Object.keys(config.mqtt)) {
+        config.mqtt[key] = process.env[`MQTT_${key.toUpperCase()}`] ?? config.mqtt[key];
+      }
+
       // Merge the config values with the default values
       return Object.assign(defaults, config);
     } catch (e) {
