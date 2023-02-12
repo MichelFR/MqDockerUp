@@ -82,6 +82,10 @@ You can also use environment variables to override the values in the config file
 - `MQTT_QOS`: The MQTT Quality of Service level to use when publishing updates.
 - `MQTT_RETAIN`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
 
+## Screenshots
+![image](https://user-images.githubusercontent.com/7061122/218313659-e97f37b1-d3c4-404b-9308-f9db675d0441.png)
+
+
 ## Contribute
 
 This project is open source and contributions are welcome. If you have any ideas or suggestions, please open an issue or a pull request.
