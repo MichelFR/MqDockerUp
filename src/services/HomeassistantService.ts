@@ -1,3 +1,4 @@
+import axios, { AxiosResponse } from "axios";
 import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
 
@@ -11,6 +12,14 @@ export default class HomeassistantService {
         const topic = `${config.mqtt.topic}/availability`;
 
         this.publishMessage(client, topic, payload, true);
+    }
+
+    public static async subscribeToCommand(client: any) {
+        client.subscribe(`${config.mqtt.topic}/update`);
+
+        client.on("message", (message: any) => {
+            console.log(message);
+        });
     }
 
     public static async publishConfigMessages(client: any) {
@@ -58,6 +67,11 @@ export default class HomeassistantService {
             topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_tag/config`;
             payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName);
             this.publishMessage(client, topic, payload, true);
+
+            // Docker Update
+            topic = `homeassistant/update/${formatedImage}_${tag}/docker_update/config`;
+            payload = this.createUpdatePayload("Update: " + formatedImage, image, tag, "dockerUpdate", containerName);
+            this.publishMessage(client, topic, payload, true);
         }
     }
 
@@ -70,6 +84,15 @@ export default class HomeassistantService {
             const tag = container.Config.Image.split(":")[1];
             const containerName = container.Name.substring(1);
             const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : "none"
+            const imageInfo = await DockerService.getImageInfo(image+":"+tag);
+            const currentDigest = imageInfo.RepoDigests[0].split(":")[1];
+            let newDigest = null;
+
+            const response = await axios.get(`https://registry.hub.docker.com/v2/repositories/${image}/tags?name=${tag}`);
+
+            if (response.data.results[0].images) {
+                newDigest = response.data.results[0]?.digest?.split(":")[1];
+            }
 
             const topic = `${config.mqtt.topic}/${formatedImage}`;
             const payload = JSON.stringify({
@@ -82,6 +105,22 @@ export default class HomeassistantService {
                 dockerPorts: dockerPorts
             });
             this.publishMessage(client, topic, payload, true);
+
+            // Update entity payload
+            const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+            const updatePayload = JSON.stringify({
+                installed_version: currentDigest.substring(0, 12),
+                latest_version: newDigest ? newDigest?.substring(0, 12) : "unknown",
+                update_available: newDigest ? (currentDigest !== newDigest) : false,
+                release_notes: null,
+                release_url: "https://www.google.com/",
+                entity_picture: null,
+                command_topic: `${config.mqtt.topic}/update`,
+                payload_install: "install",
+                title: formatedImage
+            });
+
+            this.publishMessage(client, updateTopic, updatePayload, true);
         }
     }
 
@@ -102,11 +141,38 @@ export default class HomeassistantService {
         const formatedImage = image.replace(/\//g, "_");
 
         return {
-            "name": name,
+            "object_id": name,
             "unique_id": `${image+tag+name}`,
             "state_topic": `${config.mqtt.topic}/${formatedImage}`,
             "device_class": deviceClass,
             "value_template": `{{ value_json.${valueName} }}`,
+            "availability": [
+            {
+                "topic": `${config.mqtt.topic}/availability`
+            }
+            ],
+            "device": {
+                "manufacturer": "MqDockerUp",
+                "model": `${image}:${tag}`,
+                "name": deviceName,
+                "sw_version": packageJson.version,
+                "sa": "docker",
+                "identifiers": [
+                    `${image}_${tag}`
+                ]
+            },
+            "icon": "mdi:docker"
+        };
+    }
+
+    public static createUpdatePayload(name: string, image: string, tag: string, valueName: string, deviceName: string): object {
+        const formatedImage = image.replace(/\//g, "_");
+
+        return {
+            "name": name,
+            "unique_id": `${image+tag+name}`,
+            "state_topic": `${config.mqtt.topic}/${formatedImage}/update`,
+            "device_class": "firmware",
             "availability": [
             {
                 "topic": `${config.mqtt.topic}/availability`
