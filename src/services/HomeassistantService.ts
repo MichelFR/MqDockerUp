@@ -20,10 +20,33 @@ export default class HomeassistantService {
             const image = container.Config.Image.split(":")[0];
             const formatedImage = image.replace(/\//g, "_");
             const tag = container.Config.Image.split(":")[1];
+            const containerName = `Container: ${container.Name.substring(1)}`;
 
-            const topic = `homeassistant/sensor/${formatedImage}_${tag}/sensor/config`;
-            const payload = this.createPayload("Docker Image", image, tag);
-            console.debug(payload);
+            let topic, payload;
+
+            // Container Id
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_id/config`;
+            payload = this.createPayload("Container ID", image, tag, "dockerId", containerName);
+            this.publishMessage(client, topic, payload, true);
+
+            // Container Name
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_name/config`;
+            payload = this.createPayload("Container Name", image, tag, "dockerName", containerName);
+            this.publishMessage(client, topic, payload, true);
+
+            // Container Status
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_status/config`;
+            payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName);
+            this.publishMessage(client, topic, payload, true);
+
+            // Docker Image
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
+            payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName);
+            this.publishMessage(client, topic, payload, true);
+
+            // Docker Tag
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_tag/config`;
+            payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName);
             this.publishMessage(client, topic, payload, true);
         }
     }
@@ -35,9 +58,16 @@ export default class HomeassistantService {
             const image = container.Config.Image.split(":")[0];
             const formatedImage = image.replace(/\//g, "_");
             const tag = container.Config.Image.split(":")[1];
+            const containerName = container.Name.substring(1);
 
             const topic = `${config.mqtt.topic}/${formatedImage}`;
-            const payload = image;
+            const payload = JSON.stringify({
+                dockerImage: image,
+                dockerTag: tag,
+                dockerName: containerName,
+                dockerId: container.Id.substring(0, 12),
+                dockerStatus: container.State.Status
+            });
             this.publishMessage(client, topic, payload, true);
         }
     }
@@ -55,27 +85,29 @@ export default class HomeassistantService {
     }
 
 
-    public static createPayload(name: string, image: string, tag: string): object {
+    public static createPayload(name: string, image: string, tag: string, valueName: string, deviceName: string, deviceClass?: string|null): object {
         const formatedImage = image.replace(/\//g, "_");
 
         return {
             "name": name,
-            "unique_id": `${image+tag}`,
+            "unique_id": `${image+tag+name}`,
             "state_topic": `${config.mqtt.topic}/${formatedImage}`,
+            "device_class": deviceClass,
+            "value_template": `{{ value_json.${valueName} }}`,
             "availability": [
             {
                 "topic": `${config.mqtt.topic}/availability`
             }
             ],
             "device": {
-            "manufacturer": "MqDockerUp",
-            "model": `${image}:${tag}`,
-            "name": image,
-            "sw_version": packageJson.version,
-            "sa": "docker",
-            "identifiers": [
-                `${image}_${tag}`
-            ]
+                "manufacturer": "MqDockerUp",
+                "model": `${image}:${tag}`,
+                "name": deviceName,
+                "sw_version": packageJson.version,
+                "sa": "docker",
+                "identifiers": [
+                    `${image}_${tag}`
+                ]
             },
             "icon": "mdi:docker"
         };
