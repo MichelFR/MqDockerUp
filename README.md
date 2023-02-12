@@ -84,7 +84,8 @@ You can also use environment variables to override the values in the config file
 
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/7061122/218336219-2c6337ac-f0df-4b8f-9d92-3b0085af98c7.png)
-![image](https://user-images.githubusercontent.com/7061122/218336258-b1379c55-b3cd-4e08-810a-9ce7293efe96.png)
+![image](https://user-images.githubusercontent.com/7061122/218336295-a040936a-20f3-48da-8835-d9c6746fc8f6.png)
+
 
 
 
