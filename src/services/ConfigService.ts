@@ -7,7 +7,7 @@ export default class ConfigService {
       // Define the default values
       const defaults = {
         main: {
-          interval: "1m",
+          interval: "15m",
         },
         mqtt: {
           ha_discovery: true,
@@ -26,27 +26,13 @@ export default class ConfigService {
       // Parse the config file
       const config = yaml.parse(fs.readFileSync("config.yaml", "utf8"));
 
-      // Parse the environment variables
-      const env = {
-        main: {
-          interval: process.env.MAIN_INTERVAL,
-        },
-        mqtt: {
-          ha_discovery: process.env.MQTT_HA_DISCOVERY,
-          connectionUri: process.env.MQTT_CONNECTIONURI,
-          topic: process.env.MQTT_TOPIC,
-          clientId: process.env.MQTT_CLIENTID,
-          username: process.env.MQTT_USERNAME,
-          password: process.env.MQTT_PASSWORD,
-          connectTimeout: process.env.MQTT_CONNECTTIMEOUT,
-          protocolVersion: process.env.MQTT_PROTOCOLVERSION,
-          qos: process.env.MQTT_QOS,
-          retain: process.env.MQTT_RETAIN,
-        },
-      };
+      // Override the config values with the environment variables
+      for (const key of Object.keys(config)) {
+        config[key] = process.env[key] ?? config[key];
+      }
 
-      // Merge the env, config, and default values
-      return { ...defaults, ...config, ...env };
+      // Merge the config values with the default values
+      return Object.assign(defaults, config);
     } catch (e) {
       console.log(e);
     }
