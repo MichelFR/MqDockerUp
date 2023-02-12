@@ -39,6 +39,16 @@ export default class HomeassistantService {
             payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName);
             this.publishMessage(client, topic, payload, true);
 
+            // Container Uptime
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_uptime/config`;
+            payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "time");
+            this.publishMessage(client, topic, payload, true);
+
+            // Container Ports
+            topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_ports/config`;
+            payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName);
+            this.publishMessage(client, topic, payload, true);
+
             // Docker Image
             topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
             payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName);
@@ -59,6 +69,7 @@ export default class HomeassistantService {
             const formatedImage = image.replace(/\//g, "_");
             const tag = container.Config.Image.split(":")[1];
             const containerName = container.Name.substring(1);
+            const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : "none"
 
             const topic = `${config.mqtt.topic}/${formatedImage}`;
             const payload = JSON.stringify({
@@ -66,7 +77,9 @@ export default class HomeassistantService {
                 dockerTag: tag,
                 dockerName: containerName,
                 dockerId: container.Id.substring(0, 12),
-                dockerStatus: container.State.Status
+                dockerStatus: container.State.Status,
+                dockerUptime: container.State.StartedAt,
+                dockerPorts: dockerPorts
             });
             this.publishMessage(client, topic, payload, true);
         }
