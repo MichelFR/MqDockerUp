@@ -83,7 +83,6 @@ You can also use environment variables to override the values in the config file
 - `MQTT_RETAIN`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
 
 ## Screenshots
-![image](https://user-images.githubusercontent.com/7061122/218313659-e97f37b1-d3c4-404b-9308-f9db675d0441.png)
 ![image](https://user-images.githubusercontent.com/7061122/218315328-b1da0934-4934-4e4f-bf0a-580681c2fd2e.png)
 
 
