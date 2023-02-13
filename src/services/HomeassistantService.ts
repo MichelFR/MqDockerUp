@@ -116,7 +116,7 @@ export default class HomeassistantService {
             const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
             const updatePayload = JSON.stringify({
                 installed_version: `${tag}: ${currentDigest.substring(0, 12)}`,
-                latest_version: newDigest ? `${tag}: ${currentDigest.substring(0, 12)}` : null,
+                latest_version: newDigest ? `${tag}: ${newDigest.substring(0, 12)}` : null,
                 release_notes: null,
                 release_url: null,
                 entity_picture: null,
