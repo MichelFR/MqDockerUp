@@ -21,9 +21,16 @@ export default class DockerService {
     return await DockerService.docker.getImage(imageId).inspect();
   }
 
-  public static async updateContainer(containerId: string, targetImageId: string) {
+  public static async updateContainer(containerId: string) {
     const container = DockerService.docker.getContainer(containerId);
-    const updatedContainer = await container.update({ Image: targetImageId });
-    return updatedContainer;
+    const info = await container.inspect();
+    const containerConfig = info.Config;
+    const imageName = containerConfig.Image;
+    await container.stop();
+    await container.remove();
+    await DockerService.docker.pull(imageName);
+    const newContainer = await DockerService.docker.createContainer(Object.assign({}, containerConfig, {Image: imageName}));
+    await newContainer.start();
+    return newContainer;
   }
 }
