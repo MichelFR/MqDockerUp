@@ -94,11 +94,14 @@ client.on("message", async (topic: string, message: any) => {
   const data = JSON.parse(message);
   const containerId = data?.containerId;
 
+
   if (topic = "mqdockerup/update" && containerId) {
+      const image = data?.image;
+
       console.log("🚀 Got update message ");
-      client.publish(`${config.mqtt.topic}/update`, JSON.stringify({containerId: containerId, status: "updating"}));
+      client.publish(`${config.mqtt.topic}/${image}/update`, JSON.stringify({containerId: containerId, status: "updating", update_status: "updating..."}));
       await DockerService.updateContainer(containerId);
-      client.publish(`${config.mqtt.topic}/update`, JSON.stringify({containerId: containerId, status: "updated"}));
+      client.publish(`${config.mqtt.topic}/${image}/update`, JSON.stringify({containerId: containerId, status: "updated", update_status: "updated!"}));
   }
 });
 
