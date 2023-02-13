@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
 
@@ -12,14 +12,6 @@ export default class HomeassistantService {
         const topic = `${config.mqtt.topic}/availability`;
 
         this.publishMessage(client, topic, payload, true);
-    }
-
-    public static async subscribeToCommand(client: any) {
-        client.subscribe(`${config.mqtt.topic}/update`);
-
-        client.on("message", (message: any) => {
-            console.log(message);
-        });
     }
 
     public static async publishConfigMessages(client: any) {

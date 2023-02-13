@@ -15,6 +15,8 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   clientId: config.mqtt.clientId,
 });
 
+client.subscribe(`${config.mqtt.topic}/update`);
+
 const checkAndPublishUpdates = async (): Promise<void> => {
   console.log("🔍 Checking for updates...");
 
@@ -86,6 +88,19 @@ client.on("connect", async () => {
   }
 
   startInterval();
+});
+
+client.on("message", async (message: any) => {
+  const data = JSON.parse(message);
+  const containerId = data.containerId;
+
+  client.publish(`${config.mqtt.topic}/update`, JSON.stringify({containerId: containerId, status: "updating"}));
+
+  if (containerId) {
+      console.log("🚀 Got update message ");
+      await DockerService.updateContainer(containerId);
+      client.publish(`${config.mqtt.topic}/update`, JSON.stringify({containerId: containerId, status: "updated"}));
+  }
 });
 
 client.on("error", (error) => {
