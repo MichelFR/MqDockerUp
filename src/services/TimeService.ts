@@ -55,4 +55,3 @@ export default class TimeService {
     return formattedDuration.trim();
   }
 }
-

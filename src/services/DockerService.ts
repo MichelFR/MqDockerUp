@@ -17,7 +17,9 @@ export default class DockerService {
     );
   }
 
-  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo> {
+  public static async getImageInfo(
+    imageId: string
+  ): Promise<Docker.ImageInspectInfo> {
     return await DockerService.docker.getImage(imageId).inspect();
   }
 
@@ -43,19 +45,31 @@ export default class DockerService {
       ...info.HostConfig,
       ...info.NetworkSettings,
       Name: info.Name,
-      Image: imageName
+      Image: imageName,
     };
 
     // Map the volumes from the old container to the new container
     const mounts = info.Mounts;
-    const binds = mounts.map(mount => `${mount.Source}:${mount.Destination}`);
+    const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
     containerConfig.HostConfig.Binds = binds;
 
     // Create and start the new container
-    const newContainer = await DockerService.docker.createContainer(containerConfig);
+    const newContainer = await DockerService.docker.createContainer(
+      containerConfig
+    );
     await newContainer.start();
 
     // Return the new container
     return newContainer;
+  }
+
+  public static async stopContainer(containerId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    await container.stop();
+  }
+
+  public static async startContainer(containerId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    await container.start();
   }
 }
