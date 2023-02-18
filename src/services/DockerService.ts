@@ -44,7 +44,7 @@ export default class DockerService {
       ...info.Config,
       ...info.HostConfig,
       ...info.NetworkSettings,
-      Name: info.Name,
+      name: info.Name,
       Image: imageName,
     };
 
