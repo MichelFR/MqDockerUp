@@ -1,5 +1,6 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
+import axios from "axios";
 
 export default class DockerService {
   private static docker = new Docker();
@@ -20,7 +21,7 @@ export default class DockerService {
   public static async getImageRegistry(
     imageName: string,
     tag: string
-  ): Promise<{ registry: string; response: any }> {
+  ): Promise<{ registry: any; response: any }> {
     try {
       const response = await axios.get(
         `https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`
@@ -28,12 +29,12 @@ export default class DockerService {
       if (response.status === 200) {
         return { registry: "Docker Hub", response };
       } else {
-        const registry = getPrivateRegistry(imageName);
+        const registry = this.getPrivateRegistry(imageName);
         return { registry: registry || "No registry (self-built?)", response };
       }
-    } catch (error) {
+    } catch (error: any) {
       if (error.response && error.response.status === 404) {
-        const registry = getPrivateRegistry(imageName);
+        const registry = this.getPrivateRegistry(imageName);
         return {
           registry: registry || "No registry (self-built?)",
           response: error.response,
