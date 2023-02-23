@@ -23,27 +23,41 @@ export default class DockerService {
     tag: string
   ): Promise<{ registry: any; response: any }> {
     try {
-      const response = await axios.get(
-        `https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`
-      );
+      const response = await axios.get(`https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`);
       if (response.status === 200) {
-        return { registry: "Docker Hub", response };
-      } else {
-        const registry = this.getPrivateRegistry(imageName);
-        return { registry: registry || "No registry (self-built?)", response };
+        return { registry: 'Docker Hub', response };
       }
-    } catch (error: any) {
-      if (error.response && error.response.status === 404) {
-        const registry = this.getPrivateRegistry(imageName);
-        return {
-          registry: registry || "No registry (self-built?)",
-          response: error.response,
-        };
-      } else {
-        console.error(error);
-        return { registry: "", response: null };
+    } catch (error) {}
+  
+    const registryList = [
+      { name: 'eu.gcr.io', displayName: 'Google Cloud Registry (EU)', checkEndsWith: true },
+      { name: 'asia.gcr.io', displayName: 'Google Cloud Registry (Asia)', checkEndsWith: true },
+      { name: 'us.gcr.io', displayName: 'Google Cloud Registry (US)', checkEndsWith: true },
+      { name: 'docker.pkg.airfocus.io', displayName: 'Airfocus Container Registry' },
+      { name: 'quay.io', displayName: 'Quay.io' },
+      { name: 'gcr.io', displayName: 'Google Container Registry' },
+      { name: 'registry.access.redhat.com', displayName: 'Red Hat Registry' },
+      { name: 'ghcr.io', displayName: 'GitHub Container Registry' },
+      { name: 'docker.io', displayName: 'Docker Hub' },
+      { name: 'amazonaws.com', displayName: 'Amazon Elastic Container Registry', checkEndsWith: true },
+      { name: 'mcr.microsoft.com', displayName: 'Microsoft Container Registry' },
+      { name: 'docker.pkg.github.com', displayName: 'GitHub Packages Container Registry' },
+      { name: 'harbor.domain.com', displayName: 'VMware Harbor Registry' },
+      { name: 'docker.elastic.co', displayName: 'Elastic Container Registry' },
+      { name: 'registry.gitlab.com', displayName: 'GitLab Container Registry' },
+      { name: 'k8s.gcr.io', displayName: 'Google Kubernetes Engine Registry' },
+      { name: 'docker.pkg.digitalocean.com', displayName: 'DigitalOcean Container Registry' },
+    ];
+  
+    for (const registry of registryList) {
+      if (registry.checkEndsWith && imageName.endsWith(`/${registry.name}`)) {
+        return { registry: registry.displayName, response: null };
+      } else if (!registry.checkEndsWith && imageName.startsWith(`${registry.name}/`)) {
+        return { registry: registry.displayName, response: null };
       }
     }
+  
+    return { registry: 'No registry (self-built?)', response: null };
   }
 
   public static getPrivateRegistry(imageName: string): string | null {
