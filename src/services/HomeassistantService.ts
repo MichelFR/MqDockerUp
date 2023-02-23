@@ -147,8 +147,9 @@ export default class HomeassistantService {
 
       if (currentDigest) {
 
-        registryInformation = await DockerService.getImageRegistry(image, tag);
+        let registryInformation = await DockerService.getImageRegistry(image, tag);
         response = registryInformation.response;
+        registry = registryInformation.registry;
 
         images = response.data.results[0]?.images;
         if (images && images.length > 0) {
@@ -184,7 +185,7 @@ export default class HomeassistantService {
         dockerStatus: container.State.Status,
         dockerUptime: container.State.StartedAt,
         dockerPorts: dockerPorts,
-        dockerRegistry: registry[0],
+        dockerRegistry: registry,
       });
       this.publishMessage(client, topic, payload, true);
 
