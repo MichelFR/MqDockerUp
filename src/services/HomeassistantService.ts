@@ -118,7 +118,7 @@ export default class HomeassistantService {
 
   public static async publishMessages(client: any) {
     const containers = await DockerService.listContainers();
-
+  
     for (const container of containers) {
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/\//g, "_");
@@ -128,23 +128,24 @@ export default class HomeassistantService {
         ? Object.keys(container.Config.ExposedPorts).join(", ")
         : null;
       const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
-      const currentDigest = imageInfo.RepoDigests[0].split(":")[1];
+      const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
       let newDigest = null;
-
+  
       const response = await axios.get(
         `https://registry.hub.docker.com/v2/repositories/${image}/tags?name=${tag}`
       );
-
-      if (response.data.results[0].images) {
+  
+      const images = response.data.results[0]?.images;
+      if (images && images.length > 0) {
         newDigest = response.data.results[0]?.digest?.split(":")[1];
       }
-
+  
       if (currentDigest !== newDigest) {
         console.debug(`🚨 New version available for image ${image}:${tag}`);
       } else {
         console.debug(`🟢 Image ${image}:${tag} is up-to-date`);
       }
-
+  
       const topic = `${config.mqtt.topic}/${formatedImage}`;
       const payload = JSON.stringify({
         dockerImage: image,
@@ -156,7 +157,7 @@ export default class HomeassistantService {
         dockerPorts: dockerPorts,
       });
       this.publishMessage(client, topic, payload, true);
-
+  
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
       const updatePayload = JSON.stringify({
@@ -169,10 +170,11 @@ export default class HomeassistantService {
         entity_picture: null,
         title: formatedImage,
       });
-
+  
       this.publishMessage(client, updateTopic, updatePayload, true);
     }
   }
+  
 
   public static async publishMessage(
     client: any,
