@@ -17,6 +17,42 @@ export default class DockerService {
     );
   }
 
+  public static async getImageRegistry(
+    imageName: string,
+    tag: string
+  ): Promise<{ registry: string; response: any }> {
+    try {
+      const response = await axios.get(
+        `https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`
+      );
+      if (response.status === 200) {
+        return { registry: "Docker Hub", response };
+      } else {
+        const registry = getPrivateRegistry(imageName);
+        return { registry: registry || "No registry (self-built?)", response };
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        const registry = getPrivateRegistry(imageName);
+        return {
+          registry: registry || "No registry (self-built?)",
+          response: error.response,
+        };
+      } else {
+        console.error(error);
+        return { registry: "", response: null };
+      }
+    }
+  }
+
+  private getPrivateRegistry(imageName: string): string | null {
+    const parts = imageName.split("/");
+    if (parts.length >= 2) {
+      return parts[0];
+    }
+    return null;
+  }
+
   public static async getImageInfo(
     imageId: string
   ): Promise<Docker.ImageInspectInfo> {

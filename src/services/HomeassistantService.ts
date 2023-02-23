@@ -102,6 +102,17 @@ export default class HomeassistantService {
       );
       this.publishMessage(client, topic, payload, true);
 
+      // Docker Registry
+      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_registry/config`;
+      payload = this.createPayload(
+        "Docker Registry",
+        image,
+        tag,
+        "dockerRegistry",
+        containerName
+      );
+      this.publishMessage(client, topic, payload, true);
+
       // Docker Update
       topic = `homeassistant/update/${formatedImage}_${tag}/docker_update/config`;
       payload = this.createUpdatePayload(
@@ -132,11 +143,12 @@ export default class HomeassistantService {
       let newDigest = null;
       let response = null;
       let images = null;
+      let registry = null;
 
       if (currentDigest) {
-        response = await axios.get(
-          `https://registry.hub.docker.com/v2/repositories/${image}/tags?name=${tag}`
-        );
+
+        registry = await DockerService.getImageRegistry();
+        response = registry[1];
 
         images = response.data.results[0]?.images;
         if (images && images.length > 0) {
@@ -172,6 +184,7 @@ export default class HomeassistantService {
         dockerStatus: container.State.Status,
         dockerUptime: container.State.StartedAt,
         dockerPorts: dockerPorts,
+        dockerRegistry: registry[0],
       });
       this.publishMessage(client, topic, payload, true);
 
