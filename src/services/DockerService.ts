@@ -46,7 +46,7 @@ export default class DockerService {
     }
   }
 
-  private getPrivateRegistry(imageName: string): string | null {
+  public static getPrivateRegistry(imageName: string): string | null {
     const parts = imageName.split("/");
     if (parts.length >= 2) {
       return parts[0];
