@@ -147,7 +147,7 @@ export default class HomeassistantService {
 
       if (currentDigest) {
 
-        registry = await DockerService.getImageRegistry();
+        registry = await DockerService.getImageRegistry(image, tag);
         response = registry[1];
 
         images = response.data.results[0]?.images;
