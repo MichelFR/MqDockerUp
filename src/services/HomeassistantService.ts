@@ -155,13 +155,11 @@ export default class HomeassistantService {
           console.debug(
             `❌ Failed to find current digest for image ${image}:${tag}`
           );
-          return;
         }
         if (!newDigest) {
           console.debug(
             `❌ Failed to find new digest for image ${image}:${tag}`
           );
-          return;
         }
       }
 
