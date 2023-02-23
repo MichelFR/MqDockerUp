@@ -81,10 +81,6 @@ export default class DockerService {
     const container = DockerService.docker.getContainer(containerId);
     const info = await container.inspect();
 
-    // Stop and remove the old container
-    await container.stop();
-    await container.remove();
-
     // Pull the latest image for the new container
     const imageName = info.Config.Image;
     await DockerService.docker.pull(imageName);
@@ -103,6 +99,10 @@ export default class DockerService {
     const mounts = info.Mounts;
     const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
     containerConfig.HostConfig.Binds = binds;
+
+    // Stop and remove the old container
+    await container.stop();
+    await container.remove();
 
     // Create and start the new container
     const newContainer = await DockerService.docker.createContainer(
