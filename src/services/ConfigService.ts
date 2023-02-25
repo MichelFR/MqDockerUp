@@ -1,7 +1,14 @@
 import yaml from "yaml";
 import fs from "fs";
 
+/**
+ * ConfigService class that provides access to the application configuration settings.
+ */
 export default class ConfigService {
+  /**
+   * Gets the configuration settings.
+   * @returns {any} The merged configuration settings.
+   */
   public static getConfig(): any {
     try {
       // Define the default values
@@ -23,7 +30,6 @@ export default class ConfigService {
         },
       };
 
-      // Parse the config file
       const config = yaml.parse(fs.readFileSync("config.yaml", "utf8"));
 
       // Override the config values with the environment variables
@@ -33,14 +39,12 @@ export default class ConfigService {
 
       // Override the main values with the environment variables
       for (const key of Object.keys(config.main)) {
-        config.main[key] =
-          process.env[`MAIN_${key.toUpperCase()}`] ?? config.main[key];
+        config.main[key] = process.env[`MAIN_${key.toUpperCase()}`] ?? config.main[key];
       }
 
       // Override the mqtt values with the environment variables
       for (const key of Object.keys(config.mqtt)) {
-        config.mqtt[key] =
-          process.env[`MQTT_${key.toUpperCase()}`] ?? config.mqtt[key];
+        config.mqtt[key] = process.env[`MQTT_${key.toUpperCase()}`] ?? config.mqtt[key];
       }
 
       // Merge the config values with the default values

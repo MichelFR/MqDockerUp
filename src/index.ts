@@ -31,14 +31,10 @@ const checkAndPublishUpdates = async (): Promise<void> => {
       const currentTags = imageInfo.RepoTags.map((tag) => tag.split(":")[1]);
 
       for (const currentTag of currentTags) {
-        const response = await axios.get(
-          `https://registry.hub.docker.com/v2/repositories/${imageWithoutTags}/tags?name=${currentTag}`
-        );
+        const response = await axios.get(`https://registry.hub.docker.com/v2/repositories/${imageWithoutTags}/tags?name=${currentTag}`);
         if (response.data.results[0].images) {
           const newDigest = response.data.results[0].digest;
-          const previousDigest = imageInfo.RepoDigests.find((d) =>
-            d.endsWith(`:${currentTag}`)
-          );
+          const previousDigest = imageInfo.RepoDigests.find((d) => d.endsWith(`:${currentTag}`));
 
           if (!imageInfo.RepoDigests.find((d) => d.endsWith(`@${newDigest}`))) {
             console.debug(`🚨 New version available for image ${image}`);
@@ -54,9 +50,7 @@ const checkAndPublishUpdates = async (): Promise<void> => {
             console.debug(`🟢 Image ${image}:${currentTag} is up-to-date`);
           }
         } else {
-          console.debug(
-            `🔍 No information found for image: ${image}:${currentTag}`
-          );
+          console.debug(`🔍 No information found for image: ${image}:${currentTag}`);
         }
       }
     }
@@ -66,20 +60,13 @@ const checkAndPublishUpdates = async (): Promise<void> => {
   }
 
   console.debug("🔍 Finished checking for image updates");
-  console.debug(
-    `🕒 Next check in ${TimeService.formatDuration(
-      TimeService.parseDuration(config.main.interval)
-    )}`
-  );
+  console.debug(`🕒 Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
 };
 
 let intervalId: NodeJS.Timeout;
 
 const startInterval = async () => {
-  intervalId = setInterval(
-    checkAndPublishUpdates,
-    TimeService.parseDuration(config.main.interval)
-  );
+  intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
   console.debug(`🔁 Checking for image updates every ${config.main.interval}`);
 };
 
@@ -103,8 +90,7 @@ client.on("message", async (topic: string, message: any) => {
   const containerId = data?.containerId;
   const image = data?.image;
 
-  if ((topic = "mqdockerup/update" && containerId)) {    
-
+  if ((topic = "mqdockerup/update" && containerId)) {
     console.log(`🚀 Got update message for ${image}`);
     client.publish(
       `${config.mqtt.topic}/${image}/update`,
@@ -137,7 +123,6 @@ client.on("message", async (topic: string, message: any) => {
     );
     console.log("🚀 Updated container ");
 
-
     await checkAndPublishUpdates();
   }
 });
@@ -146,9 +131,7 @@ const exitHandler = async (exitCode: number) => {
   HomeassistantService.publishAvailability(client, false);
 
   const now = new Date().toLocaleString();
-  const message = exitCode === 0
-    ? `🛑 MqDockerUp gracefully stopped at ${now}`
-    : `💥 MqDockerUp stopped due to an error at ${now}`;
+  const message = exitCode === 0 ? `🛑 MqDockerUp gracefully stopped at ${now}` : `💥 MqDockerUp stopped due to an error at ${now}`;
 
   console.debug(message);
   process.exit(exitCode);

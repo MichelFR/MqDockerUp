@@ -1,4 +1,9 @@
 export default class TimeService {
+  /**
+   * Parses the duration
+   * @param duration The duration in the format of 1s, 1m, 1h, 1d, 1w
+   * @returns
+   */
   public static parseDuration(duration: string): number {
     const durationRegex = /^(\d+)([a-zA-Z]+)$/;
     const match = durationRegex.exec(duration);
@@ -24,6 +29,10 @@ export default class TimeService {
     }
   }
 
+  /**
+   * Formats the duration in milliseconds to a human readable format.
+   * @param duration The duration in milliseconds.
+   */
   public static formatDuration(duration: number) {
     const weeks = Math.floor(duration / (1000 * 60 * 60 * 24 * 7));
     duration -= weeks * (1000 * 60 * 60 * 24 * 7);

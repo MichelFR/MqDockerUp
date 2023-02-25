@@ -2,53 +2,63 @@ import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
 import axios from "axios";
 
+/**
+ * Represents a Docker service for managing Docker containers and images.
+ */
 export default class DockerService {
   private static docker = new Docker();
 
+  /**
+   * Returns a list of inspect information for all containers.
+   *
+   * @returns A promise that resolves to an array of `ContainerInspectInfo`.
+   */
   public static async listContainers(): Promise<ContainerInspectInfo[]> {
     const containers = await DockerService.docker.listContainers();
 
     return Promise.all(
       containers.map(async (container) => {
-        const containerInfo = await DockerService.docker
-          .getContainer(container.Id)
-          .inspect();
+        const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
         return containerInfo;
       })
     );
   }
 
-  public static async getImageRegistry(
-    imageName: string,
-    tag: string
-  ): Promise<{ registry: any; response: any }> {
+  /**
+   * Gets the Docker image registry and response information for the specified image name and tag.
+   *
+   * @param imageName - The name of the Docker image.
+   * @param tag - The tag of the Docker image.
+   * @returns A promise that resolves to an object with `registry` and `response` properties.
+   */
+  public static async getImageRegistry(imageName: string, tag: string): Promise<{ registry: any; response: any }> {
     try {
       const response = await axios.get(`https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`);
       if (response.status === 200) {
-        return { registry: 'Docker Hub', response };
+        return { registry: "Docker Hub", response };
       }
     } catch (error) {}
-  
+
     const registryList = [
-      { name: 'eu.gcr.io', displayName: 'Google Cloud Registry (EU)', checkEndsWith: true },
-      { name: 'asia.gcr.io', displayName: 'Google Cloud Registry (Asia)', checkEndsWith: true },
-      { name: 'us.gcr.io', displayName: 'Google Cloud Registry (US)', checkEndsWith: true },
-      { name: 'docker.pkg.airfocus.io', displayName: 'Airfocus Container Registry' },
-      { name: 'quay.io', displayName: 'Quay.io' },
-      { name: 'gcr.io', displayName: 'Google Container Registry' },
-      { name: 'registry.access.redhat.com', displayName: 'Red Hat Registry' },
-      { name: 'ghcr.io', displayName: 'GitHub Container Registry' },
-      { name: 'docker.io', displayName: 'Docker Hub' },
-      { name: 'amazonaws.com', displayName: 'Amazon Elastic Container Registry', checkEndsWith: true },
-      { name: 'mcr.microsoft.com', displayName: 'Microsoft Container Registry' },
-      { name: 'docker.pkg.github.com', displayName: 'GitHub Packages Container Registry' },
-      { name: 'harbor.domain.com', displayName: 'VMware Harbor Registry' },
-      { name: 'docker.elastic.co', displayName: 'Elastic Container Registry' },
-      { name: 'registry.gitlab.com', displayName: 'GitLab Container Registry' },
-      { name: 'k8s.gcr.io', displayName: 'Google Kubernetes Engine Registry' },
-      { name: 'docker.pkg.digitalocean.com', displayName: 'DigitalOcean Container Registry' },
+      { name: "eu.gcr.io", displayName: "Google Cloud Registry (EU)", checkEndsWith: true },
+      { name: "asia.gcr.io", displayName: "Google Cloud Registry (Asia)", checkEndsWith: true },
+      { name: "us.gcr.io", displayName: "Google Cloud Registry (US)", checkEndsWith: true },
+      { name: "docker.pkg.airfocus.io", displayName: "Airfocus Container Registry" },
+      { name: "quay.io", displayName: "Quay.io" },
+      { name: "gcr.io", displayName: "Google Container Registry" },
+      { name: "registry.access.redhat.com", displayName: "Red Hat Registry" },
+      { name: "ghcr.io", displayName: "GitHub Container Registry" },
+      { name: "docker.io", displayName: "Docker Hub" },
+      { name: "amazonaws.com", displayName: "Amazon Elastic Container Registry", checkEndsWith: true },
+      { name: "mcr.microsoft.com", displayName: "Microsoft Container Registry" },
+      { name: "docker.pkg.github.com", displayName: "GitHub Packages Container Registry" },
+      { name: "harbor.domain.com", displayName: "VMware Harbor Registry" },
+      { name: "docker.elastic.co", displayName: "Elastic Container Registry" },
+      { name: "registry.gitlab.com", displayName: "GitLab Container Registry" },
+      { name: "k8s.gcr.io", displayName: "Google Kubernetes Engine Registry" },
+      { name: "docker.pkg.digitalocean.com", displayName: "DigitalOcean Container Registry" },
     ];
-  
+
     for (const registry of registryList) {
       if (registry.checkEndsWith && imageName.endsWith(`${registry.name}`)) {
         return { registry: registry.displayName, response: null };
@@ -56,10 +66,16 @@ export default class DockerService {
         return { registry: registry.displayName, response: null };
       }
     }
-  
-    return { registry: 'No registry (self-built?)', response: null };
+
+    return { registry: "No registry (self-built?)", response: null };
   }
 
+  /**
+   * Gets the private registry for the specified image name.
+   *
+   * @param imageName - The name of the Docker image.
+   * @returns The private registry or `null` if it is not found.
+   */
   public static getPrivateRegistry(imageName: string): string | null {
     const parts = imageName.split("/");
     if (parts.length >= 2) {
@@ -68,24 +84,35 @@ export default class DockerService {
     return null;
   }
 
-  public static async getImageInfo(
-    imageId: string
-  ): Promise<Docker.ImageInspectInfo> {
+  /**
+   * Gets the inspect information for the specified Docker image.
+   *
+   * @param imageId - The ID of the Docker image.
+   * @returns A promise that resolves to an `ImageInspectInfo` object.
+   */
+  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo> {
     return await DockerService.docker.getImage(imageId).inspect();
   }
 
+  /**
+   * Updates a Docker container with the latest image.
+   *
+   * @param containerId - The ID of the Docker container to update.
+   * @returns A promise that resolves to the new Docker container.
+   */
   public static async updateContainer(containerId: string) {
-    // TODO: Catch the case if its trying to update MqDockerUp itself
-
-    // Get the old container and its information
     const container = DockerService.docker.getContainer(containerId);
     const info = await container.inspect();
-
-    // Pull the latest image for the new container
     const imageName = info.Config.Image;
+
+    // Catch the case if its trying to update MqDockerUp itself
+    if (imageName.toLowerCase() === "mqdockerup") {
+      console.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
+      return;
+    }
+
     await DockerService.docker.pull(imageName);
 
-    // Create the configuration for the new container
     const containerConfig: any = {
       ...info,
       ...info.Config,
@@ -95,32 +122,94 @@ export default class DockerService {
       Image: imageName,
     };
 
-    // Map the volumes from the old container to the new container
     const mounts = info.Mounts;
     const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
     containerConfig.HostConfig.Binds = binds;
 
-    // Stop and remove the old container
     await container.stop();
     await container.remove();
 
-    // Create and start the new container
-    const newContainer = await DockerService.docker.createContainer(
-      containerConfig
-    );
+    const newContainer = await DockerService.docker.createContainer(containerConfig);
     await newContainer.start();
 
-    // Return the new container
     return newContainer;
   }
 
+  /**
+   * Stops a Docker container.
+   *
+   * @param containerId - The ID of the Docker container to stop.
+   */
   public static async stopContainer(containerId: string) {
     const container = DockerService.docker.getContainer(containerId);
     await container.stop();
   }
 
+  /**
+   * Starts a Docker container.
+   *
+   * @param containerId - The ID of the Docker container to start.
+   */
   public static async startContainer(containerId: string) {
     const container = DockerService.docker.getContainer(containerId);
     await container.start();
+  }
+
+  /**
+   * Removes a Docker container.
+   * @param containerId - The ID of the Docker container to remove.
+   */
+  public static async removeContainer(containerId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    await container.remove();
+  }
+
+  /**
+   * Pauses a Docker container.
+   * @param containerId - The ID of the Docker container to pause.
+   * @returns A promise that resolves when the container is paused.
+   */
+  public static async pauseContainer(containerId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    await container.pause();
+  }
+
+  /**
+   * Unpauses a Docker container.
+   * @param containerId - The ID of the Docker container to unpause.
+   * @returns A promise that resolves when the container is unpaused.
+   */
+  public static async unpauseContainer(containerId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    await container.unpause();
+  }
+
+  /**
+   * Restarts a Docker container.
+   * @param containerId - The ID of the Docker container to restart.
+   * @returns A promise that resolves when the container is restarted.
+   */
+  public static async restartContainer(containerId: string) {
+    const container = DockerService.docker.getContainer(containerId);
+    await container.restart();
+    await container.wait();
+  }
+
+  /**
+   * Creates a Docker container.
+   * @param imageName - The name of the Docker image to use.
+   * @param containerName - The name of the Docker container to create.
+   * @param containerConfig - The configuration for the Docker container.
+   * @returns A promise that resolves to the new Docker container.
+   * @throws An error if the container could not be created.
+   */
+  public static async createContainer(imageName: string, containerName: string, containerConfig: any): Promise<Docker.Container> {
+    const container = await DockerService.docker.createContainer({
+      Image: imageName,
+      name: containerName,
+      ...containerConfig,
+    });
+
+    return container;
   }
 }
