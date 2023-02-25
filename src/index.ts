@@ -99,17 +99,22 @@ client.on("connect", async () => {
 client.on("message", async (topic: string, message: any) => {
   const data = JSON.parse(message);
   const containerId = data?.containerId;
+  const image = data?.image;
 
-  if ((topic = "mqdockerup/update" && containerId)) {
-    const image = data?.image;
+  if ((topic = "mqdockerup/update" && containerId)) {    
 
-    console.log("🚀 Got update message ");
+    console.log(`🚀 Got update message for ${image}`);
     client.publish(
       `${config.mqtt.topic}/${image}/update`,
       JSON.stringify({
         containerId: containerId,
-        status: "updating",
-        update_status: "updating...",
+        status: `Updating ${image}`,
+        update_status: "In progress...",
+        update_available: true,
+        update_started: new Date().toISOString(),
+        update_finished: null,
+        update_error: null,
+        update_error_message: null,
       })
     );
 
@@ -119,8 +124,13 @@ client.on("message", async (topic: string, message: any) => {
       `${config.mqtt.topic}/${image}/update`,
       JSON.stringify({
         containerId: containerId,
-        status: "updated",
-        update_status: "updated!",
+        status: `Updated ${image}`,
+        update_status: "Success",
+        update_available: false,
+        update_finished: new Date().toISOString(),
+        update_started: null,
+        update_error: null,
+        update_error_message: null,
       })
     );
     console.log("🚀 Updated container ");
