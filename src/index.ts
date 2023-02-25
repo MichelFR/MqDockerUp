@@ -15,6 +15,8 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   clientId: config.mqtt.clientId,
 });
 
+console.debug(`📦 MqDockerUp version ${packageJson.version}`);
+
 client.subscribe(`${config.mqtt.topic}/update`);
 
 const checkAndPublishUpdates = async (): Promise<void> => {
@@ -140,21 +142,20 @@ client.on("message", async (topic: string, message: any) => {
   }
 });
 
-client.on("error", (error) => {
-  console.error("💥 Could not connect to MQTT server.");
-  clearInterval(intervalId);
-  console.debug(
-    `🛑 MqDockerUp stopped due to an error, at ${new Date().toLocaleString()}`
-  );
-  process.exit(1);
-});
-
-process.on("SIGINT", async () => {
-  clearInterval(intervalId);
+const exitHandler = async (exitCode: number) => {
   HomeassistantService.publishAvailability(client, false);
 
-  console.debug(
-    `🛑 MqDockerUp gracefully stopped at ${new Date().toLocaleString()}`
-  );
-  process.exit(0);
-});
+  const now = new Date().toLocaleString();
+  const message = exitCode === 0
+    ? `🛑 MqDockerUp gracefully stopped at ${now}`
+    : `💥 MqDockerUp stopped due to an error at ${now}`;
+
+  console.debug(message);
+  process.exit(exitCode);
+};
+
+client.on("error", (error) => exitHandler(1));
+process.on("SIGINT", () => exitHandler(0));
+process.on("SIGTERM", () => exitHandler(0));
+process.on("uncaughtException", (error) => exitHandler(1));
+process.on("unhandledRejection", (error) => exitHandler(1));
