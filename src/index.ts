@@ -112,7 +112,9 @@ client.on("message", async (topic: string, message: any) => {
         update_status: "updating...",
       })
     );
+
     await DockerService.updateContainer(containerId);
+
     client.publish(
       `${config.mqtt.topic}/${image}/update`,
       JSON.stringify({
@@ -122,6 +124,9 @@ client.on("message", async (topic: string, message: any) => {
       })
     );
     console.log("🚀 Updated container ");
+
+
+    await checkAndPublishUpdates();
   }
 });
 
