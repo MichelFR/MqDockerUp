@@ -50,9 +50,9 @@ export default class DockerService {
     ];
   
     for (const registry of registryList) {
-      if (registry.checkEndsWith && imageName.endsWith(`/${registry.name}`)) {
+      if (registry.checkEndsWith && imageName.endsWith(`${registry.name}`)) {
         return { registry: registry.displayName, response: null };
-      } else if (!registry.checkEndsWith && imageName.startsWith(`${registry.name}/`)) {
+      } else if (!registry.checkEndsWith && imageName.startsWith(`${registry.name}`)) {
         return { registry: registry.displayName, response: null };
       }
     }
