@@ -145,12 +145,11 @@ export default class HomeassistantService {
       let images = null;
       let registry = null;
 
+      let registryInformation = await DockerService.getImageRegistry(image, tag);
+      response = registryInformation.response;
+      registry = registryInformation.registry;
+
       if (currentDigest) {
-
-        let registryInformation = await DockerService.getImageRegistry(image, tag);
-        response = registryInformation.response;
-        registry = registryInformation.registry;
-
         images = response.data.results[0]?.images;
         if (images && images.length > 0) {
           newDigest = response.data.results[0]?.digest?.split(":")[1];
