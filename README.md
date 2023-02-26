@@ -1,7 +1,7 @@
 [![Docker Image Build & Deploy](https://github.com/MichelFR/MqDockerUp/actions/workflows/docker-image.yml/badge.svg)](https://github.com/MichelFR/MqDockerUp/actions/workflows/docker-image.yml)
 [![Create Release](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-cehcker.yml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-cehcker.yml)
 
-<img width="1017" alt="image" src="https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png">
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png">
 
 
 # MqDockerUp
