@@ -45,7 +45,7 @@ export default class HomeassistantService {
 
       // Container Uptime
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_uptime/config`;
-      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "timestamp", "mdi:timer-sand");
+      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "duration", "mdi:timer-sand");
       this.publishMessage(client, topic, payload, true);
 
       // Container Ports
