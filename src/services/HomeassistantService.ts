@@ -107,7 +107,7 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/\//g, "_");
 
     return {
-      object_id: name,
+      object_id: `${image + tag + name}`,
       name: name,
       unique_id: `${image + tag + name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
@@ -143,6 +143,7 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/\//g, "_");
 
     return {
+      object_id: `${image + tag + name}`,
       name: name,
       unique_id: `${image + tag + name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
