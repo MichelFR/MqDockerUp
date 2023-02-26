@@ -30,42 +30,42 @@ export default class HomeassistantService {
 
       // Container Id
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_id/config`;
-      payload = this.createPayload("Container ID", image, tag, "dockerId", containerName, "mdi:key-variant");
+      payload = this.createPayload("Container ID", image, tag, "dockerId", containerName, null, "mdi:key-variant");
       this.publishMessage(client, topic, payload, true);
 
       // Container Name
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_name/config`;
-      payload = this.createPayload("Container Name", image, tag, "dockerName", containerName, "mdi:label");
+      payload = this.createPayload("Container Name", image, tag, "dockerName", containerName, null, "mdi:label");
       this.publishMessage(client, topic, payload, true);
 
       // Container Status
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_status/config`;
-      payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName, "mdi:checkbox-marked-circle");
+      payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName, null, "mdi:checkbox-marked-circle");
       this.publishMessage(client, topic, payload, true);
 
       // Container Uptime
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_uptime/config`;
-      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "mdi:timer-sand");
+      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "date", "mdi:timer-sand");
       this.publishMessage(client, topic, payload, true);
 
       // Container Ports
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_ports/config`;
-      payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName, "mdi:lan-connect");
+      payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName, null, "mdi:lan-connect");
       this.publishMessage(client, topic, payload, true);
 
       // Docker Image
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
-      payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName, "mdi:image");
+      payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName, null, "mdi:image");
       this.publishMessage(client, topic, payload, true);
 
       // Docker Tag
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_tag/config`;
-      payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName, "mdi:tag");
+      payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName, null, "mdi:tag");
       this.publishMessage(client, topic, payload, true);
 
       // Docker Registry
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_registry/config`;
-      payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", containerName, "mdi:database");
+      payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", containerName, null, "mdi:database");
       this.publishMessage(client, topic, payload, true);
 
       // Docker Update
@@ -107,6 +107,7 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/\//g, "_");
 
     return {
+      object_id: name,
       name: name,
       unique_id: `${image + tag + name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
@@ -250,4 +251,14 @@ export default class HomeassistantService {
     });
     this.publishMessage(client, topic, payload, true);
   }
+}
+
+interface Payload {
+  name: string;
+  image: string;
+  tag: string;
+  valueName: string;
+  deviceName: string;
+  deviceClass?: string | null;
+  icon?: string;
 }
