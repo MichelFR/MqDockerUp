@@ -19,7 +19,7 @@ jobs:
     - name: Compare Version Number
       id: compare
       run: |
-        VERSION_CHANGED=$(git diff HEAD^ HEAD -- package.json | grep -E '^\+.*"version":')
+        VERSION_CHANGED=$(git diff --allow-empty HEAD^ HEAD -- package.json | grep -E '^\+.*"version":')
         if [ -z "$VERSION_CHANGED" ]; then
           echo "No version change detected."
           echo "::set-output name=changed::false"
