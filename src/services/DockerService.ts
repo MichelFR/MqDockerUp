@@ -153,66 +153,77 @@ export default class DockerService {
       return;
     }
 
-    await DockerService.docker.pull(imageName, async (err: any, stream: any) => {
-      // handle error
-      if (err) {
-        console.error("Pulling Error: " + err);
-        return;
-      }
-      // use modem.followProgress to get progress events
-      DockerService.docker.modem.followProgress(
-        stream,
-        async (err: any, output: any) => {
-          // handle error
-          if (err) {
-            console.error("Stream Error: " + err);
-            return;
-          }
+    let totalProgress = 0;
+    let totalSize = 0;
 
-          console.log("Image pulled successfully");
-          const containerConfig: any = {
-            ...info,
-            ...info.Config,
-            ...info.HostConfig,
-            ...info.NetworkSettings,
-            name: info.Name,
-            Image: imageName,
-          };
-
-          const mounts = info.Mounts;
-          const binds = mounts.map(
-            (mount) => `${mount.Source}:${mount.Destination}`
-          );
-          containerConfig.HostConfig.Binds = binds;
-
-          await container.stop();
-          await container.remove();
-
-          const newContainer = await DockerService.docker.createContainer(
-            containerConfig
-          );
-          await newContainer.start();
-
-          return newContainer;
-        },
-        function (event) {
-          console.log(event.status);
-          // check if progressDetail exists
-          if (event.progressDetail) {
-            // get current, total and start values
-            let current = event.progressDetail.current || 0;
-            let total = event.progressDetail.total || 0;
-            let start = event.progressDetail.start || 0;
-            // calculate percentage
-            let percentage = Math.round(
-              ((current - start) / (total - start)) * 100
-            );
-            // print percentage
-            console.log(`Percentage: ${percentage}%`);
-          }
+    await DockerService.docker.pull(
+      imageName,
+      async (err: any, stream: any) => {
+        // handle error
+        if (err) {
+          console.error("Pulling Error: " + err);
+          return;
         }
-      );
-    });
+        // use modem.followProgress to get progress events
+        DockerService.docker.modem.followProgress(
+          stream,
+          async (err: any, output: any) => {
+            // handle error
+            if (err) {
+              console.error("Stream Error: " + err);
+              return;
+            }
+
+            console.log("Image pulled successfully");
+            const containerConfig: any = {
+              ...info,
+              ...info.Config,
+              ...info.HostConfig,
+              ...info.NetworkSettings,
+              name: info.Name,
+              Image: imageName,
+            };
+
+            const mounts = info.Mounts;
+            const binds = mounts.map(
+              (mount) => `${mount.Source}:${mount.Destination}`
+            );
+            containerConfig.HostConfig.Binds = binds;
+
+            await container.stop();
+            await container.remove();
+
+            const newContainer = await DockerService.docker.createContainer(
+              containerConfig
+            );
+            await newContainer.start();
+
+            return newContainer;
+          },
+          function (event) {
+            console.log(event.status);
+            // check if progressDetail exists
+            if (event.progressDetail) {
+              // get current, total and start values
+              const current = event.progressDetail.current || 0;
+              const total = event.progressDetail.total || 0;
+
+              // update total progress and size
+              totalProgress += current;
+              totalSize += total;
+
+              // calculate percentage
+              const percentage = Math.round((totalProgress / totalSize) * 100);
+
+              // print percentage with emoji
+              console.log(
+                `🚀 Total progress: ${totalProgress}/${totalSize} (${percentage}%)`
+              );
+            }
+          }
+        );
+      }
+    );
   }
 
   /**
