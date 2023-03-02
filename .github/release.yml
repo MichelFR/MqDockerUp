@@ -1,0 +1,44 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: 🏕 Features
+      labels:
+        - '*'
+      exclude:
+        labels:
+          - dependencies
+          - fix
+          - chore
+          - docs
+          - test
+          - performance
+          - security
+          - refactoring
+          - breaking changes
+    - title: 🐛 Fixes 🔧
+      labels:
+        - 'fix'
+    - title: 👒 Dependencies 📦
+      labels:
+        - dependencies
+    - title: 🧹 Chores 🗑️
+      labels:
+        - chore
+    - title: 📝 Docs 📚
+      labels:
+        - docs
+    - title: ✅ Tests 💯 
+      labels:
+        - test 
+    # Added categories below this line    
+    - title: 🚀 Performance ⚡️ 
+      labels:
+        - performance 
+    - title: 🔒 Security 🔐 
+      labels:
+        - security 
+    - title: 🛠️ Refactoring 💡 
+      labels:
+        - refactoring 
