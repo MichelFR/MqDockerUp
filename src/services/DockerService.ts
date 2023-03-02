@@ -18,7 +18,9 @@ export default class DockerService {
 
     return Promise.all(
       containers.map(async (container) => {
-        const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
+        const containerInfo = await DockerService.docker
+          .getContainer(container.Id)
+          .inspect();
         return containerInfo;
       })
     );
@@ -31,38 +33,74 @@ export default class DockerService {
    * @param tag - The tag of the Docker image.
    * @returns A promise that resolves to an object with `registry` and `response` properties.
    */
-  public static async getImageRegistry(imageName: string, tag: string): Promise<{ registry: any; response: any }> {
+  public static async getImageRegistry(
+    imageName: string,
+    tag: string
+  ): Promise<{ registry: any; response: any }> {
     try {
-      const response = await axios.get(`https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`);
+      const response = await axios.get(
+        `https://registry.hub.docker.com/v2/repositories/${imageName}/tags?name=${tag}`
+      );
       if (response.status === 200) {
         return { registry: "Docker Hub", response };
       }
     } catch (error) {}
 
     const registryList = [
-      { name: "eu.gcr.io", displayName: "Google Cloud Registry (EU)", checkEndsWith: true },
-      { name: "asia.gcr.io", displayName: "Google Cloud Registry (Asia)", checkEndsWith: true },
-      { name: "us.gcr.io", displayName: "Google Cloud Registry (US)", checkEndsWith: true },
-      { name: "docker.pkg.airfocus.io", displayName: "Airfocus Container Registry" },
+      {
+        name: "eu.gcr.io",
+        displayName: "Google Cloud Registry (EU)",
+        checkEndsWith: true,
+      },
+      {
+        name: "asia.gcr.io",
+        displayName: "Google Cloud Registry (Asia)",
+        checkEndsWith: true,
+      },
+      {
+        name: "us.gcr.io",
+        displayName: "Google Cloud Registry (US)",
+        checkEndsWith: true,
+      },
+      {
+        name: "docker.pkg.airfocus.io",
+        displayName: "Airfocus Container Registry",
+      },
       { name: "quay.io", displayName: "Quay.io" },
       { name: "gcr.io", displayName: "Google Container Registry" },
       { name: "registry.access.redhat.com", displayName: "Red Hat Registry" },
       { name: "ghcr.io", displayName: "GitHub Container Registry" },
       { name: "docker.io", displayName: "Docker Hub" },
-      { name: "amazonaws.com", displayName: "Amazon Elastic Container Registry", checkEndsWith: true },
-      { name: "mcr.microsoft.com", displayName: "Microsoft Container Registry" },
-      { name: "docker.pkg.github.com", displayName: "GitHub Packages Container Registry" },
+      {
+        name: "amazonaws.com",
+        displayName: "Amazon Elastic Container Registry",
+        checkEndsWith: true,
+      },
+      {
+        name: "mcr.microsoft.com",
+        displayName: "Microsoft Container Registry",
+      },
+      {
+        name: "docker.pkg.github.com",
+        displayName: "GitHub Packages Container Registry",
+      },
       { name: "harbor.domain.com", displayName: "VMware Harbor Registry" },
       { name: "docker.elastic.co", displayName: "Elastic Container Registry" },
       { name: "registry.gitlab.com", displayName: "GitLab Container Registry" },
       { name: "k8s.gcr.io", displayName: "Google Kubernetes Engine Registry" },
-      { name: "docker.pkg.digitalocean.com", displayName: "DigitalOcean Container Registry" },
+      {
+        name: "docker.pkg.digitalocean.com",
+        displayName: "DigitalOcean Container Registry",
+      },
     ];
 
     for (const registry of registryList) {
       if (registry.checkEndsWith && imageName.endsWith(`${registry.name}`)) {
         return { registry: registry.displayName, response: null };
-      } else if (!registry.checkEndsWith && imageName.startsWith(`${registry.name}`)) {
+      } else if (
+        !registry.checkEndsWith &&
+        imageName.startsWith(`${registry.name}`)
+      ) {
         return { registry: registry.displayName, response: null };
       }
     }
@@ -90,7 +128,9 @@ export default class DockerService {
    * @param imageId - The ID of the Docker image.
    * @returns A promise that resolves to an `ImageInspectInfo` object.
    */
-  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo> {
+  public static async getImageInfo(
+    imageId: string
+  ): Promise<Docker.ImageInspectInfo> {
     return await DockerService.docker.getImage(imageId).inspect();
   }
 
@@ -107,32 +147,72 @@ export default class DockerService {
 
     // Catch the case if its trying to update MqDockerUp itself
     if (imageName.toLowerCase() === "mqdockerup") {
-      console.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
+      console.error(
+        "You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually."
+      );
       return;
     }
 
-    await DockerService.docker.pull(imageName);
+    await DockerService.docker.pull(imageName, function (err, stream) {
+      // handle error
+      if (err) {
+        console.error("Pulling Error: " + err);
+        return;
+      }
+      // use modem.followProgress to get progress events
+      DockerService.docker.modem.followProgress(
+        stream,
+        function (err, output) {
+          // handle error
+          if (err) {
+            console.error("Stream Error: " + err);
+            return;
+          }
 
-    const containerConfig: any = {
-      ...info,
-      ...info.Config,
-      ...info.HostConfig,
-      ...info.NetworkSettings,
-      name: info.Name,
-      Image: imageName,
-    };
+          console.log("Image pulled successfully");
+          const containerConfig: any = {
+            ...info,
+            ...info.Config,
+            ...info.HostConfig,
+            ...info.NetworkSettings,
+            name: info.Name,
+            Image: imageName,
+          };
 
-    const mounts = info.Mounts;
-    const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
-    containerConfig.HostConfig.Binds = binds;
+          const mounts = info.Mounts;
+          const binds = mounts.map(
+            (mount) => `${mount.Source}:${mount.Destination}`
+          );
+          containerConfig.HostConfig.Binds = binds;
 
-    await container.stop();
-    await container.remove();
+          await container.stop();
+          await container.remove();
 
-    const newContainer = await DockerService.docker.createContainer(containerConfig);
-    await newContainer.start();
+          const newContainer = await DockerService.docker.createContainer(
+            containerConfig
+          );
+          await newContainer.start();
 
-    return newContainer;
+          return newContainer;
+        },
+        function (event) {
+          console.log(event.status);
+          // check if progressDetail exists
+          if (event.progressDetail) {
+            // get current, total and start values
+            let current = event.progressDetail.current || 0;
+            let total = event.progressDetail.total || 0;
+            let start = event.progressDetail.start || 0;
+            // calculate percentage
+            let percentage = Math.round(
+              ((current - start) / (total - start)) * 100
+            );
+            // print percentage
+            console.log(`Percentage: ${percentage}%`);
+          }
+        }
+      );
+    });
   }
 
   /**
@@ -203,7 +283,11 @@ export default class DockerService {
    * @returns A promise that resolves to the new Docker container.
    * @throws An error if the container could not be created.
    */
-  public static async createContainer(imageName: string, containerName: string, containerConfig: any): Promise<Docker.Container> {
+  public static async createContainer(
+    imageName: string,
+    containerName: string,
+    containerConfig: any
+  ): Promise<Docker.Container> {
     const container = await DockerService.docker.createContainer({
       Image: imageName,
       name: containerName,
