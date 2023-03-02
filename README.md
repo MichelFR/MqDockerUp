@@ -81,6 +81,9 @@ You can also use environment variables to override the values in the config file
 - `MQTT_QOS`: The MQTT Quality of Service level to use when publishing updates.
 - `MQTT_RETAIN`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
 
+## Docker-Command Example:
+docker run -v /var/run/docker.sock:/var/run/docker.sock -e MQTT_HA_DISCOVERY=true -e MQTT_CONNECTIONURI=mqtt://127.0.0.1:1883 -e MQTT_USERNAME=ha -e MAIN_INTERVAL=1m --restart always --name MqDockerUp -d micrib/mqdockerup:latest
+
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/7061122/218336295-a040936a-20f3-48da-8835-d9c6746fc8f6.png)
 
