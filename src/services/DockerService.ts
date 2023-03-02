@@ -153,7 +153,7 @@ export default class DockerService {
       return;
     }
 
-    await DockerService.docker.pull(imageName, function (err, stream) {
+    await DockerService.docker.pull(imageName, async (err: any, stream: any) => {
       // handle error
       if (err) {
         console.error("Pulling Error: " + err);
@@ -162,7 +162,7 @@ export default class DockerService {
       // use modem.followProgress to get progress events
       DockerService.docker.modem.followProgress(
         stream,
-        function (err, output) {
+        async (err: any, output: any) => {
           // handle error
           if (err) {
             console.error("Stream Error: " + err);
