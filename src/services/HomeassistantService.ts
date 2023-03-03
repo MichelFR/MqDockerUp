@@ -25,7 +25,7 @@ export default class HomeassistantService {
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/\//g, "_");
       const tag = container.Config.Image.split(":")[1];
-      const containerName = `Container: ${container.Name.substring(1)}`;
+      const containerName = `${container.Name.substring(1)}`;
 
       let topic, payload;
 
@@ -71,7 +71,7 @@ export default class HomeassistantService {
 
       // Docker Update
       topic = `homeassistant/update/${formatedImage}_${tag}/docker_update/config`;
-      payload = this.createUpdatePayload("Update: " + formatedImage, image, tag, "dockerUpdate", containerName, container.Id);
+      payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", containerName, container.Id);
       this.publishMessage(client, topic, payload, true);
     }
   }
@@ -108,9 +108,9 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/\//g, "_");
 
     return {
-      object_id: `${image + name}`,
+      object_id: `${image + " " + name}`,
       name: `${deviceName + " " + name}`,
-      unique_id: `${image + name}`,
+      unique_id: `${image + " " + name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
       device_class: deviceClass,
       value_template: `{{ value_json.${valueName} }}`,
@@ -144,9 +144,9 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/\//g, "_");
 
     return {
-      object_id: `${image + tag + name}`,
-      name: `${image + " " + name}`,
-      unique_id: `${image + tag + name}`,
+      object_id: `${image + " " + name}`,
+      name: `${deviceName + " " + name}`,
+      unique_id: `${image + " " + name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
       device_class: "firmware",
       availability: [
