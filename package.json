@@ -33,6 +33,6 @@
   "devDependencies": {
     "typescript": "^4.9.5",
     "@types/dockerode": "^3.3.14",
-    "nodemon": "^2.0.20"
+    "nodemon": "^2.0.21"
   }
 }
