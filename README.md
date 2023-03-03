@@ -19,11 +19,38 @@ MqDockerUp uses Docker APIs to get information about containers and images. It t
 2. Change the `config.yaml` file with your desired configuration.
 3. Run the project with `npm run start`.
 
-### Docker container
+### Docker command
 
-1. Pull the image from Docker Hub with `docker pull micrib/mqdockerup`.
-2. Mount the docker.sock file to the container with `docker run -v /var/run/docker.sock:/var/run/docker.sock micrib/mqdockerup`.
-3. Optionally, you can use environment variables to override the values in the config file. See the [Environment Variables](#environment-variables) section for more details.
+```bash
+docker run -d \
+  --name MqDockerUp \
+  --restart always \
+  -e MAIN_INTERVAL=5m \
+  -e MQTT_CONNECTIONURI=mqtt://127.0.0.1:1883 \
+  -e MQTT_USERNAME=ha \
+  -e MQTT_PASSWORD=12345678 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  micrib/mqdockerup:latest
+```
+
+
+### Docker Compose
+```yaml
+version: '3.9'
+
+services:
+  mqdockerup:
+    image: micrib/mqdockerup:latest
+    restart: always
+    environment:
+      MAIN_INTERVAL: "5m"
+      MQTT_CONNECTIONURI: "mqtt://127.0.0.1:1883"
+      MQTT_USERNAME: "ha"
+      MQTT_PASSWORD: "12345678"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    container_name: MqDockerUp
+```
 
 ## Configuration
 
@@ -33,7 +60,7 @@ The configuration file `config.yaml` contains the following sections:
 The main configuration is specified in the `main` section:
 ```yaml
 main:
-  interval: "15m"
+  interval: "5m"
 ```
 The `interval` parameter specifies the frequency at which updates are checked and published to the MQTT broker. The interval must be in the format `[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks).
 
@@ -41,7 +68,6 @@ The `interval` parameter specifies the frequency at which updates are checked an
 The MQTT configuration is specified in the `mqtt` section:
 ```yaml
 mqtt:
-  ha_discovery: true
   connectionUri: "mqtt://localhost:1883"
   topic: "mqdockerup"
   clientId: "mqdockerup"
@@ -49,12 +75,9 @@ mqtt:
   password: "12345678"
   connectTimeout: 60
   protocolVersion: 5
-  qos: 2
-  retain: false
 ```
 The `mqtt` section contains the following parameters:
 
-- `ha_discovery`: Specifies whether or not to enable Home Assistant discovery.
 - `connectionUri`: The URL of the MQTT broker to connect to.
 - `topic`: The MQTT topic to publish updates to.
 - `clientId`: The MQTT client ID to use when connecting to the broker.
@@ -62,15 +85,12 @@ The `mqtt` section contains the following parameters:
 - `password`: The password to use when connecting to the MQTT broker.
 - `connectTimeout`: The maximum time, in seconds, to wait for a successful connection to the MQTT broker.
 - `protocolVersion`: The MQTT protocol version to use when connecting to the broker.
-- `qos`: The MQTT Quality of Service level to use when publishing updates.
-- `retain`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
 
 ## Environment Variables
 
 You can also use environment variables to override the values in the config file. The environment variables must have the same name as the config keys, but in uppercase and with underscores instead of dots. For example, to override the `mqtt.connectionUri` value, you can set the `MQTT_CONNECTIONURI` environment variable. Here is the list of environment variables that you can use:
 
 - `MAIN_INTERVAL`: The interval at which updates are checked and published to the MQTT broker.
-- `MQTT_HA_DISCOVERY`: Specifies whether or not to enable Home Assistant discovery.
 - `MQTT_CONNECTIONURI`: The URL of the MQTT broker to connect to.
 - `MQTT_TOPIC`: The MQTT topic to publish updates to.
 - `MQTT_CLIENTID`: The MQTT client ID to use when connecting to the broker.
@@ -78,11 +98,6 @@ You can also use environment variables to override the values in the config file
 - `MQTT_PASSWORD`: The password to use when connecting to the MQTT broker.
 - `MQTT_CONNECTTIMEOUT`: The maximum time, in seconds, to wait for a successful connection to the MQTT broker.
 - `MQTT_PROTOCOLVERSION`: The MQTT protocol version to use when connecting to the broker.
-- `MQTT_QOS`: The MQTT Quality of Service level to use when publishing updates.
-- `MQTT_RETAIN`: Specifies whether or not to retain the latest update when publishing to the MQTT broker.
-
-## Docker-Command Example:
-docker run -v /var/run/docker.sock:/var/run/docker.sock -e MQTT_HA_DISCOVERY=true -e MQTT_CONNECTIONURI=mqtt://127.0.0.1:1883 -e MQTT_USERNAME=ha -e MAIN_INTERVAL=1m --restart always --name MqDockerUp -d micrib/mqdockerup:latest
 
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/7061122/218336295-a040936a-20f3-48da-8835-d9c6746fc8f6.png)
