@@ -3,17 +3,13 @@ main:
   # The interval must be specified in the format [number][unit]
   # where [number] is a positive integer and [unit] is one of s (seconds)
   # m (minutes), h (hours), d (days), w (weeks).
-  interval: "15m"
+  interval: "5m"
 
 # MQTT configuration
 mqtt:
-  ha_discovery: true
-  connectionUri: "mqtt://localhost:1883"
+  connectionUri: "mqtt://192.168.178.106:1883"
   topic: "mqdockerup"
   clientId: "mqdockerup"
   username: "ha"
-  password: "12345678"
   connectTimeout: 60
   protocolVersion: 5
-  qos: 2
-  retain: false
