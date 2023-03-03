@@ -1,4 +1,3 @@
-import axios, { AxiosResponse } from "axios";
 import mqtt from "mqtt";
 import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
@@ -95,6 +94,7 @@ const exitHandler = async (exitCode: number, error?: any) => {
   
   if (error) {
     logger.error(message);
+    logger.error(typeof error);
     logger.error(error);
   } else {
     logger.info(message);
