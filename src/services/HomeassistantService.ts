@@ -1,4 +1,3 @@
-import axios from "axios";
 import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
 import logger from "./LoggerService"
