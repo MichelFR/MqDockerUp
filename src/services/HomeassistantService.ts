@@ -1,6 +1,7 @@
 import axios from "axios";
 import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
+import logger from "./LoggerService"
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../../package.json");
@@ -80,10 +81,10 @@ export default class HomeassistantService {
 
     for (const container of containers) {
       // Publish Device message (for HA)
-      this.publishDeviceMessage(container, client);
+      await this.publishDeviceMessage(container, client);
 
       // Publish update message (for HA)
-      this.publishUpdateMessage(container, client);
+      await this.publishUpdateMessage(container, client);
     }
   }
 
@@ -195,16 +196,16 @@ export default class HomeassistantService {
 
     if (currentDigest && newDigest) {
       if (currentDigest !== newDigest) {
-        console.debug(`🚨 New version available for image ${image}:${tag}`);
+        logger.info(`New version available for image ${image}:${tag}`);
       } else {
-        console.debug(`🟢 Image ${image}:${tag} is up-to-date`);
+        logger.info(`Image ${image}:${tag} is up-to-date`);
       }
     } else {
       if (!imageInfo?.RepoDigests) {
-        console.debug(`❌ Failed to find current digest for image ${image}:${tag}`);
+        logger.warn(`Failed to find current digest for image ${image}:${tag}`);
       }
       if (!newDigest) {
-        console.debug(`❌ Failed to find new digest for image ${image}:${tag}`);
+        logger.warn(`Failed to find new digest for image ${image}:${tag}`);
       }
     }
 

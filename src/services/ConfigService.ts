@@ -14,10 +14,9 @@ export default class ConfigService {
       // Define the default values
       const defaults = {
         main: {
-          interval: "15m",
+          interval: "5m",
         },
         mqtt: {
-          ha_discovery: true,
           connectionUri: "mqtt://localhost:1883",
           topic: "mqdockerup",
           clientId: "mqdockerup",
@@ -25,8 +24,6 @@ export default class ConfigService {
           password: "12345678",
           connectTimeout: 60,
           protocolVersion: 5,
-          qos: 2,
-          retain: false,
         },
       };
 
