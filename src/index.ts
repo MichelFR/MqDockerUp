@@ -4,9 +4,10 @@ import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
 import TimeService from "./services/TimeService";
+import logger from "./services/LoggerService"
+import { ExceptionHandler } from "winston";
 
 const config = ConfigService.getConfig();
-const packageJson = require("../../package.json");
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
   password: config.mqtt.password,
@@ -15,72 +16,30 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   clientId: config.mqtt.clientId,
 });
 
-console.debug(`📦 MqDockerUp version ${packageJson.version}`);
-
 client.subscribe(`${config.mqtt.topic}/update`);
 
 const checkAndPublishUpdates = async (): Promise<void> => {
-  console.log("🔍 Checking for updates...");
+  logger.info("Checking for image updates...");
 
-  if (!config.mqtt.ha_discovery) {
-    const containers = await DockerService.listContainers();
-    for (const container of containers) {
-      const image = container.Config.Image;
-      const imageWithoutTags = container.Config.Image.split(":")[0];
-      const imageInfo = await DockerService.getImageInfo(image);
-      const currentTags = imageInfo.RepoTags.map((tag) => tag.split(":")[1]);
+  await HomeassistantService.publishAvailability(client, true);
+  await HomeassistantService.publishMessages(client);
 
-      for (const currentTag of currentTags) {
-        const response = await axios.get(`https://registry.hub.docker.com/v2/repositories/${imageWithoutTags}/tags?name=${currentTag}`);
-        if (response.data.results[0].images) {
-          const newDigest = response.data.results[0].digest;
-          const previousDigest = imageInfo.RepoDigests.find((d) => d.endsWith(`:${currentTag}`));
-
-          if (!imageInfo.RepoDigests.find((d) => d.endsWith(`@${newDigest}`))) {
-            console.debug(`🚨 New version available for image ${image}`);
-            client.publish(
-              `${config.mqtt.topic}/${image}`,
-              `Image: ${image}\nTag: ${currentTag}\nPrevious Digest: ${previousDigest}\nNew Digest: ${newDigest}`,
-              {
-                qos: config.mqtt.qos,
-                retain: config.mqtt.retain,
-              }
-            );
-          } else {
-            console.debug(`🟢 Image ${image}:${currentTag} is up-to-date`);
-          }
-        } else {
-          console.debug(`🔍 No information found for image: ${image}:${currentTag}`);
-        }
-      }
-    }
-  } else {
-    await HomeassistantService.publishAvailability(client, true);
-    await HomeassistantService.publishMessages(client);
-  }
-
-  console.debug("🔍 Finished checking for image updates");
-  console.debug(`🕒 Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
+  logger.info("Finished checking for image updates");
+  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
 };
 
 let intervalId: NodeJS.Timeout;
 
 const startInterval = async () => {
   intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
-  console.debug(`🔁 Checking for image updates every ${config.main.interval}`);
 };
 
 client.on("connect", async () => {
-  console.debug("🚀 Connected to MQTT broker");
+  logger.info("Connected to MQTT broker");
   checkAndPublishUpdates();
 
-  if (config.mqtt.ha_discovery) {
-    console.debug("🔍 HomeAssistant discovery activated");
-    HomeassistantService.publishAvailability(client, true);
-    HomeassistantService.publishConfigMessages(client);
-  } else {
-    console.debug("🔍 HomeAssistant discovery not activated");
-  }
+  HomeassistantService.publishAvailability(client, true);
+  HomeassistantService.publishConfigMessages(client);
 
   startInterval();
 });
@@ -91,7 +50,7 @@ client.on("message", async (topic: string, message: any) => {
   const image = data?.image;
 
   if ((topic = "mqdockerup/update" && containerId)) {
-    console.log(`🚀 Got update message for ${image}`);
+    logger.info(`Got update message for ${image}`);
     client.publish(
       `${config.mqtt.topic}/${image}/update`,
       JSON.stringify({
@@ -121,24 +80,31 @@ client.on("message", async (topic: string, message: any) => {
         update_error_message: null,
       })
     );
-    console.log("🚀 Updated container ");
+    logger.info("Updated container ");
 
     await checkAndPublishUpdates();
   }
 });
 
-const exitHandler = async (exitCode: number) => {
+const exitHandler = async (exitCode: number, error?: any) => {
   HomeassistantService.publishAvailability(client, false);
 
   const now = new Date().toLocaleString();
-  const message = exitCode === 0 ? `🛑 MqDockerUp gracefully stopped at ${now}` : `💥 MqDockerUp stopped due to an error at ${now}`;
-
-  console.debug(message);
+  let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
+  
+  
+  if (error) {
+    logger.error(message);
+    logger.error(error);
+  } else {
+    logger.info(message);
+  }
+  
   process.exit(exitCode);
 };
 
-client.on("error", (error) => exitHandler(1));
+client.on("error", (error) => exitHandler(1, error));
 process.on("SIGINT", () => exitHandler(0));
 process.on("SIGTERM", () => exitHandler(0));
-process.on("uncaughtException", (error) => exitHandler(1));
-process.on("unhandledRejection", (error) => exitHandler(1));
+process.on("uncaughtException", (error) => exitHandler(1, error));
+process.on("unhandledRejection", (error) => exitHandler(1, error));
