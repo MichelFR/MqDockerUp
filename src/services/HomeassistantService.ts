@@ -23,7 +23,7 @@ export default class HomeassistantService {
     for (const container of containers) {
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/\//g, "_");
-      const tag = container.Config.Image.split(":")[1];
+      const tag = container.Config.Image.split(":")[1] || "latest";
       const containerName = `${container.Name.substring(1)}`;
 
       let topic, payload;
@@ -177,7 +177,7 @@ export default class HomeassistantService {
   public static async publishUpdateMessage(container: any, client: any) {
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/\//g, "_");
-    const tag = container.Config.Image.split(":")[1];
+    const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
     const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
     let newDigest = null;
@@ -230,7 +230,7 @@ export default class HomeassistantService {
   public static async publishDeviceMessage(container: any, client: any) {
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/\//g, "_");
-    const tag = container.Config.Image.split(":")[1];
+    const tag = container.Config.Image.split(":")[1] || "latest";
     const containerName = container.Name.substring(1);
     const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : null;
 
