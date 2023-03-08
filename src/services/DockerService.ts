@@ -67,6 +67,7 @@ export default class DockerService {
         displayName: "Airfocus Container Registry",
       },
       { name: "quay.io", displayName: "Quay.io" },
+      { name: "lscr.io", displayName: "linuxserver.io (lscr.io)" },
       { name: "gcr.io", displayName: "Google Container Registry" },
       { name: "registry.access.redhat.com", displayName: "Red Hat Registry" },
       { name: "ghcr.io", displayName: "GitHub Container Registry" },
