@@ -1,6 +1,9 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
 import axios from "axios";
+import logger from "./LoggerService"
+import HomeassistantService from "./HomeassistantService";
+
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -141,10 +144,11 @@ export default class DockerService {
    * @param containerId - The ID of the Docker container to update.
    * @returns A promise that resolves to the new Docker container.
    */
-  public static async updateContainer(containerId: string) {
+  public static async updateContainer(containerId: string, client: any) {
     const container = DockerService.docker.getContainer(containerId);
     const info = await container.inspect();
-    const imageName = info.Config.Image;
+    const image = info.Config.Image;
+    const imageName = image.split(":")[0];;
 
     // Catch the case if its trying to update MqDockerUp itself
     if (imageName.toLowerCase() === "mqdockerup") {
@@ -156,13 +160,14 @@ export default class DockerService {
 
     let totalProgress = 0;
     let totalSize = 0;
+    let lastProgressEvent = { progressDetail: { current: 0, total: 0 } };
 
     await DockerService.docker.pull(
-      imageName,
+      image,
       async (err: any, stream: any) => {
         // handle error
         if (err) {
-          console.error("Pulling Error: " + err);
+          logger.error("Pulling Error: " + err);
           return;
         }
         // use modem.followProgress to get progress events
@@ -171,55 +176,62 @@ export default class DockerService {
           async (err: any, output: any) => {
             // handle error
             if (err) {
-              console.error("Stream Error: " + err);
+              logger.error("Stream Error: " + err);
               return;
             }
-
-            console.log("Image pulled successfully");
+    
+            logger.info("Image pulled successfully");
             const containerConfig: any = {
               ...info,
               ...info.Config,
               ...info.HostConfig,
               ...info.NetworkSettings,
               name: info.Name,
-              Image: imageName,
+              Image: image,
             };
-
+    
             const mounts = info.Mounts;
             const binds = mounts.map(
               (mount) => `${mount.Source}:${mount.Destination}`
             );
             containerConfig.HostConfig.Binds = binds;
-
+    
             await container.stop();
             await container.remove();
-
+    
             const newContainer = await DockerService.docker.createContainer(
               containerConfig
             );
             await newContainer.start();
-
+    
             return newContainer;
           },
           function (event) {
-            console.log(event.status);
+            logger.info(`Status: ${event.status}`);
             // check if progressDetail exists
             if (event.progressDetail) {
               // get current, total and start values
               const current = event.progressDetail.current || 0;
               const total = event.progressDetail.total || 0;
-
+    
+              // calculate percentage based on the difference between the current and last progress events
+              const percentage =
+                current > lastProgressEvent.progressDetail.current
+                  ? Math.round(((totalProgress + current - lastProgressEvent.progressDetail.current) / totalSize) * 100)
+                  : Math.round((totalProgress / totalSize) * 100);
+    
               // update total progress and size
-              totalProgress += current;
-              totalSize += total;
+              totalProgress += current - lastProgressEvent.progressDetail.current;
+              totalSize += total - lastProgressEvent.progressDetail.total;
+    
+              // keep track of the last progress event
+              lastProgressEvent = event;
+    
+              // print percentage
+              logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
-              // calculate percentage
-              const percentage = Math.round((totalProgress / totalSize) * 100);
-
-              // print percentage with emoji
-              console.log(
-                `🚀 Total progress: ${totalProgress}/${totalSize} (${percentage}%)`
-              );
+              // Send Progress to MQTT 
+              HomeassistantService.publishUpdateMessage(container, client, percentage, totalSize - totalProgress, event.status, false);
             }
           }
         );
@@ -295,16 +307,8 @@ export default class DockerService {
    * @returns A promise that resolves to the new Docker container.
    * @throws An error if the container could not be created.
    */
-  public static async createContainer(
-    imageName: string,
-    containerName: string,
-    containerConfig: any
-  ): Promise<Docker.Container> {
-    const container = await DockerService.docker.createContainer({
-      Image: imageName,
-      name: containerName,
-      ...containerConfig,
-    });
+  public static async createContainer(containerConfig: any): Promise<Docker.Container> {
+    const container = await DockerService.docker.createContainer({...containerConfig});
 
     return container;
   }
