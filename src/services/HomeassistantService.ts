@@ -164,7 +164,7 @@ export default class HomeassistantService {
         identifiers: [`${image}_${tag}`],
       },
       icon: "mdi:arrow-up-bold-circle",
-      payload_install: JSON.stringify({ containerId: containerId }),
+      payload_install: JSON.stringify({ containerId: containerId, image: image }),
       command_topic: `${config.mqtt.topic}/update`,
     };
   }
@@ -238,9 +238,7 @@ export default class HomeassistantService {
       }
     }
 
-
-
-    this.publishMessage(client, updateTopic, updatePayload, true);
+    this.publishMessage(client, updateTopic, JSON.stringify(updatePayload), true);
   }
 
   /**
