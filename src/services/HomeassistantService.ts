@@ -238,7 +238,7 @@ export default class HomeassistantService {
       }
     }
 
-    this.publishMessage(client, updateTopic, JSON.stringify(updatePayload), true);
+    this.publishMessage(client, updateTopic, updatePayload, true);
   }
 
   /**
