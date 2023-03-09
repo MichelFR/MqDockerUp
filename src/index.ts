@@ -15,6 +15,7 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
 });
 
 client.subscribe(`${config.mqtt.topic}/update`);
+client.subscribe('homeassistant/+/+/+/config');
 
 const checkAndPublishUpdates = async (): Promise<void> => {
   logger.info("Checking for image updates...");
@@ -44,26 +45,38 @@ client.on("connect", async () => {
 
 client.on("message", async (topic: string, message: any) => {
   const data = JSON.parse(message);
-  const containerId = data?.containerId;
-  const image = data?.image;
 
-  if ((topic = "mqdockerup/update" && containerId)) {
+  // Update-Handler for the /update message from MQTT
+  // This is triggered by the Home Assistant button in the UI to update a container
+  if ((topic = "mqdockerup/update" && data?.containerId)) {
+    const image = data?.image;
     logger.info(`Got update message for ${image}`);
-    await DockerService.updateContainer(containerId, client);
-
+    await DockerService.updateContainer(data?.containerId, client);
     logger.info("Updated container ");
 
     await checkAndPublishUpdates();
   }
+
+  // Missing Docker Container-Handler, removes the /config message from MQTT when the container is missing
+  // This removes the entity from Home Assistant if the container is not existing anymore
+  if (data?.device?.manufacturer === "MqDockerUp") {
+    const image = data?.device?.model;
+    const containerExists = await DockerService.checkIfContainerExists(image);
+
+    if (!containerExists) {
+      client.publish(topic, "");
+      logger.info(`Removed missing container ${image} from Home Assistant`);
+    }
+  }
 });
 
-const exitHandler = async (exitCode: number, error?: any) => {
+const exitHandler = (exitCode: number, error?: any) => {
   HomeassistantService.publishAvailability(client, false);
 
   const now = new Date().toLocaleString();
   let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
-  
-  
+
+
   if (error) {
     logger.error(message);
     logger.error(typeof error);
@@ -71,7 +84,7 @@ const exitHandler = async (exitCode: number, error?: any) => {
   } else {
     logger.info(message);
   }
-  
+
   process.exit(exitCode);
 };
 
