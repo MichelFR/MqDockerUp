@@ -47,7 +47,7 @@ export default class DockerService {
       if (response.status === 200) {
         return { registry: "Docker Hub", response };
       }
-    } catch (error) {}
+    } catch (error) { }
 
     const registryList = [
       {
@@ -179,7 +179,7 @@ export default class DockerService {
               logger.error("Stream Error: " + err);
               return;
             }
-    
+
             logger.info("Image pulled successfully");
             const containerConfig: any = {
               ...info,
@@ -189,21 +189,21 @@ export default class DockerService {
               name: info.Name,
               Image: image,
             };
-    
+
             const mounts = info.Mounts;
             const binds = mounts.map(
               (mount) => `${mount.Source}:${mount.Destination}`
             );
             containerConfig.HostConfig.Binds = binds;
-    
+
             await container.stop();
             await container.remove();
-    
+
             const newContainer = await DockerService.docker.createContainer(
               containerConfig
             );
             await newContainer.start();
-    
+
             return newContainer;
           },
           function (event) {
@@ -213,20 +213,20 @@ export default class DockerService {
               // get current, total and start values
               const current = event.progressDetail.current || 0;
               const total = event.progressDetail.total || 0;
-    
+
               // calculate percentage based on the difference between the current and last progress events
               const percentage =
                 current > lastProgressEvent.progressDetail.current
                   ? Math.round(((totalProgress + current - lastProgressEvent.progressDetail.current) / totalSize) * 100)
                   : Math.round((totalProgress / totalSize) * 100);
-    
+
               // update total progress and size
               totalProgress += current - lastProgressEvent.progressDetail.current;
               totalSize += total - lastProgressEvent.progressDetail.total;
-    
+
               // keep track of the last progress event
               lastProgressEvent = event;
-    
+
               // print percentage
               logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
@@ -308,8 +308,19 @@ export default class DockerService {
    * @throws An error if the container could not be created.
    */
   public static async createContainer(containerConfig: any): Promise<Docker.Container> {
-    const container = await DockerService.docker.createContainer({...containerConfig});
+    const container = await DockerService.docker.createContainer({ ...containerConfig });
 
     return container;
+  }
+
+  /**
+    * Checks if a container exists.
+    * @param containerImage - The name of the Docker image to check.
+    * @returns A promise that resolves to true if the container exists.
+    */
+  public static async checkIfContainerExists(containerImage: string): Promise<boolean> {
+    const containers = await DockerService.docker.listContainers({ all: true });
+    const container = containers.find((container) => container.Image === containerImage);
+    return container !== undefined;
   }
 }
