@@ -4,7 +4,6 @@ import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
-import { ExceptionHandler } from "winston";
 
 const config = ConfigService.getConfig();
 const client = mqtt.connect(config.mqtt.connectionUri, {
@@ -50,35 +49,8 @@ client.on("message", async (topic: string, message: any) => {
 
   if ((topic = "mqdockerup/update" && containerId)) {
     logger.info(`Got update message for ${image}`);
-    client.publish(
-      `${config.mqtt.topic}/${image}/update`,
-      JSON.stringify({
-        containerId: containerId,
-        status: `Updating ${image}`,
-        update_status: "In progress...",
-        update_available: true,
-        update_started: new Date().toISOString(),
-        update_finished: null,
-        update_error: null,
-        update_error_message: null,
-      })
-    );
+    await DockerService.updateContainer(containerId, client);
 
-    await DockerService.updateContainer(containerId);
-
-    client.publish(
-      `${config.mqtt.topic}/${image}/update`,
-      JSON.stringify({
-        containerId: containerId,
-        status: `Updated ${image}`,
-        update_status: "Success",
-        update_available: false,
-        update_finished: new Date().toISOString(),
-        update_started: null,
-        update_error: null,
-        update_error_message: null,
-      })
-    );
     logger.info("Updated container ");
 
     await checkAndPublishUpdates();
