@@ -174,7 +174,7 @@ export default class HomeassistantService {
    * @param container
    * @param client
    */
-  public static async publishUpdateMessage(container: any, client: any) {
+  public static async publishUpdateMessage(container: any, client: any, progress: number | null = null, remaining: number | null = null, state: string | null = null, log: boolean = true) {
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/\//g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
@@ -193,31 +193,52 @@ export default class HomeassistantService {
       }
     }
 
-    if (currentDigest && newDigest) {
-      if (currentDigest !== newDigest) {
-        logger.info(`New version available for image ${image}:${tag}`);
+    if (log) {
+      if (currentDigest && newDigest) {
+        if (currentDigest !== newDigest) {
+          logger.info(`New version available for image ${image}:${tag}`);
+        } else {
+          logger.info(`Image ${image}:${tag} is up-to-date`);
+        }
       } else {
-        logger.info(`Image ${image}:${tag} is up-to-date`);
-      }
-    } else {
-      if (!imageInfo?.RepoDigests) {
-        logger.warn(`Failed to find current digest for image ${image}:${tag}`);
-      }
-      if (!newDigest) {
-        logger.warn(`Failed to find new digest for image ${image}:${tag}`);
+        if (!imageInfo?.RepoDigests) {
+          logger.warn(`Failed to find current digest for image ${image}:${tag}`);
+        }
+        if (!newDigest) {
+          logger.warn(`Failed to find new digest for image ${image}:${tag}`);
+        }
       }
     }
 
     // Update entity payload
     const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
-    const updatePayload = JSON.stringify({
+    let updatePayload = {
       installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
       latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
       release_notes: null,
       release_url: null,
       entity_picture: null,
-      title: formatedImage,
-    });
+      title: `${image}:${tag}`,
+      update: {
+        state: currentDigest && newDigest && currentDigest !== newDigest ? "available" : "idle",
+        installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
+        latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
+        last_check: new Date().toISOString(),
+        progress: null || 0,
+        remaining: null || 0,
+      }
+    };
+
+    if (progress !== null && remaining !== null) {
+      updatePayload.update.progress = progress;
+      updatePayload.update.remaining = remaining;
+
+      if (state) {
+        updatePayload.update.state = state;
+      }
+    }
+
+
 
     this.publishMessage(client, updateTopic, updatePayload, true);
   }
