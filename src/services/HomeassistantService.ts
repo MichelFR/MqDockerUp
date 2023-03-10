@@ -206,7 +206,8 @@ export default class HomeassistantService {
 
     console.log(updatePayload);
 
-    this.publishMessage(client, updateTopic, updatePayload, {retain: false});
+    // TODO: Debounce this and make it somehow display in homeassistant.
+    // this.publishMessage(client, updateTopic, updatePayload, {retain: false});
   }
 
 
@@ -285,8 +286,7 @@ export default class HomeassistantService {
     }
   }
 
-  // TODO: Debounce this and make it somehow display in homeassistant.
-  // this.publishMessage(client, updateTopic, updatePayload, {retain: true});
+  this.publishMessage(client, updateTopic, updatePayload, {retain: true});
 }
 
   /**
