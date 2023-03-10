@@ -9,7 +9,7 @@ import HomeassistantService from "./HomeassistantService";
  * Represents a Docker service for managing Docker containers and images.
  */
 export default class DockerService {
-  private static docker = new Docker();
+  public static docker = new Docker();
 
   /**
    * Returns a list of inspect information for all containers.
@@ -165,7 +165,6 @@ export default class DockerService {
     await DockerService.docker.pull(
       image,
       async (err: any, stream: any) => {
-        // handle error
         if (err) {
           logger.error("Pulling Error: " + err);
           return;
@@ -174,7 +173,6 @@ export default class DockerService {
         DockerService.docker.modem.followProgress(
           stream,
           async (err: any, output: any) => {
-            // handle error
             if (err) {
               logger.error("Stream Error: " + err);
               return;
@@ -210,28 +208,21 @@ export default class DockerService {
             logger.info(`Status: ${event.status}`);
             // check if progressDetail exists
             if (event.progressDetail) {
-              // get current, total and start values
               const current = event.progressDetail.current || 0;
               const total = event.progressDetail.total || 0;
 
-              // calculate percentage based on the difference between the current and last progress events
-              const percentage =
-                current > lastProgressEvent.progressDetail.current
-                  ? Math.round(((totalProgress + current - lastProgressEvent.progressDetail.current) / totalSize) * 100)
-                  : Math.round((totalProgress / totalSize) * 100);
-
               // update total progress and size
-              totalProgress += current - lastProgressEvent.progressDetail.current;
-              totalSize += total - lastProgressEvent.progressDetail.total;
+              totalProgress += current;
+              totalSize += total;
 
-              // keep track of the last progress event
-              lastProgressEvent = event;
+              const percentage = Math.round((totalProgress / totalSize) * 100);
 
               // print percentage
               logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
               // Send Progress to MQTT 
-              HomeassistantService.publishUpdateMessage(container, client, percentage, totalSize - totalProgress, event.status, false);
+              // TODO: Needs to be fixed
+              // HomeassistantService.publishUpdateProgressMessage(info, client, percentage, totalSize - totalProgress, event.status, false);
             }
           }
         );
@@ -314,13 +305,13 @@ export default class DockerService {
   }
 
   /**
-    * Checks if a container exists.
-    * @param containerImage - The name of the Docker image to check.
-    * @returns A promise that resolves to true if the container exists.
-    */
-  public static async checkIfContainerExists(containerImage: string): Promise<boolean> {
-    const containers = await DockerService.docker.listContainers({ all: true });
-    const container = containers.find((container) => container.Image === containerImage);
-    return container !== undefined;
-  }
+ * Checks if a container exists.
+ * @param containerImage - The name of the Docker image to check.
+ * @returns A promise that resolves to true if the container exists.
+ */
+public static checkIfContainerExists(containerImage: string): Promise<boolean> {
+  return DockerService.docker.listContainers()
+    .then((containers) => containers.some((container) => container.Image === containerImage));
+}
+
 }

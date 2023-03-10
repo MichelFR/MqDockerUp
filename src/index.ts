@@ -4,6 +4,7 @@ import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
+require('source-map-support').install();
 
 const config = ConfigService.getConfig();
 const client = mqtt.connect(config.mqtt.connectionUri, {
@@ -14,10 +15,10 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   clientId: config.mqtt.clientId,
 });
 
-client.subscribe(`${config.mqtt.topic}/update`);
-client.subscribe('homeassistant/+/+/+/config');
-
 const checkAndPublishUpdates = async (): Promise<void> => {
+  logger.info("Checking for new/old containers...");
+  await HomeassistantService.publishConfigMessages(client);
+
   logger.info("Checking for image updates...");
 
   await HomeassistantService.publishAvailability(client, true);
@@ -35,16 +36,28 @@ const startInterval = async () => {
 
 client.on("connect", async () => {
   logger.info("Connected to MQTT broker");
-  checkAndPublishUpdates();
-
-  HomeassistantService.publishAvailability(client, true);
-  HomeassistantService.publishConfigMessages(client);
-
+  await HomeassistantService.publishAvailability(client, true);
+  await checkAndPublishUpdates();
   startInterval();
+
+  client.subscribe(`${config.mqtt.topic}/update`);
+  client.subscribe('homeassistant/+/+/+/config', { qos: 0 });
 });
 
 client.on("message", async (topic: string, message: any) => {
   const data = JSON.parse(message);
+
+  // Missing Docker Container-Handler, removes the /config message from MQTT when the container is missing
+  // This removes the entity from Home Assistant if the container is not existing anymore
+  if (data?.device?.manufacturer === "MqDockerUp" && topic?.endsWith("/config")) {
+    const image = data?.device?.model;
+    await DockerService.checkIfContainerExists(image).then((containerExists) => {
+      if (!containerExists && topic) {
+        HomeassistantService.publishMessage(client, topic, "", {retain: true, qos: 0});
+        logger.info(`Removed missing container ${image} from Home Assistant`);
+      }
+    });
+  }
 
   // Update-Handler for the /update message from MQTT
   // This is triggered by the Home Assistant button in the UI to update a container
@@ -52,21 +65,9 @@ client.on("message", async (topic: string, message: any) => {
     const image = data?.image;
     logger.info(`Got update message for ${image}`);
     await DockerService.updateContainer(data?.containerId, client);
-    logger.info("Updated container ");
+    logger.info("Updated container");
 
-    await checkAndPublishUpdates();
-  }
-
-  // Missing Docker Container-Handler, removes the /config message from MQTT when the container is missing
-  // This removes the entity from Home Assistant if the container is not existing anymore
-  if (data?.device?.manufacturer === "MqDockerUp") {
-    const image = data?.device?.model;
-    const containerExists = await DockerService.checkIfContainerExists(image);
-
-    if (!containerExists) {
-      client.publish(topic, "");
-      logger.info(`Removed missing container ${image} from Home Assistant`);
-    }
+    checkAndPublishUpdates();
   }
 });
 
@@ -80,7 +81,7 @@ const exitHandler = (exitCode: number, error?: any) => {
   if (error) {
     logger.error(message);
     logger.error(typeof error);
-    logger.error(error);
+    logger.error(error.stack);
   } else {
     logger.info(message);
   }
