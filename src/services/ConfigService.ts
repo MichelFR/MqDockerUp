@@ -29,18 +29,13 @@ export default class ConfigService {
 
       const config = yaml.parse(fs.readFileSync("config.yaml", "utf8"));
 
-      // Override the config values with the environment variables
-      for (const key of Object.keys(config)) {
-        config[key] = process.env[key] ?? config[key];
-      }
-
       // Override the main values with the environment variables
-      for (const key of Object.keys(config.main)) {
+      for (const key of Object.keys(defaults.main)) {
         config.main[key] = process.env[`MAIN_${key.toUpperCase()}`] ?? config.main[key];
       }
 
       // Override the mqtt values with the environment variables
-      for (const key of Object.keys(config.mqtt)) {
+      for (const key of Object.keys(defaults.mqtt)) {
         config.mqtt[key] = process.env[`MQTT_${key.toUpperCase()}`] ?? config.mqtt[key];
       }
 
