@@ -231,16 +231,16 @@ export default class HomeassistantService {
   let images = null;
 
   let registryInformation = await DockerService.getImageRegistry(image, tag);
-  response = registryInformation.response;
+  response = registryInformation?.response;
   if (currentDigest) {
 
-    if (!response.data) {
+    if (!response?.data) {
       logger.error("No Images found:");
       logger.error(response);
     } else {
       images = response.data?.results[0]?.images;
       if (images && images.length > 0) {
-        newDigest = response.data.results[0]?.digest?.split(":")[1];
+        newDigest = response?.data?.results[0]?.digest?.split(":")[1];
       }
     }
   }
