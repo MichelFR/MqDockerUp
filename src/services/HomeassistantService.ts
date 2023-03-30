@@ -22,7 +22,7 @@ export default class HomeassistantService {
 
     for (const container of containers) {
       const image = container.Config.Image.split(":")[0];
-      const formatedImage = image.replace(/\//g, "_");
+      const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
       const tag = container.Config.Image.split(":")[1] || "latest";
       const containerName = `${container.Name.substring(1)}`;
 
@@ -108,7 +108,7 @@ export default class HomeassistantService {
     deviceClass?: string | null,
     icon: string = "mdi:docker"
   ): object {
-    const formatedImage = image.replace(/\//g, "_");
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
       object_id: `${image + " " + name}`,
@@ -144,7 +144,7 @@ export default class HomeassistantService {
     deviceName: string,
     containerId: any
   ): object {
-    const formatedImage = image.replace(/\//g, "_");
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
       object_id: `${image + " " + name}`,
@@ -184,7 +184,7 @@ export default class HomeassistantService {
     }
 
     const image = container.Config.Image.split(":")[0];
-    const formatedImage = image.replace(/\//g, "_");
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
     let newDigest = null;
@@ -222,7 +222,7 @@ export default class HomeassistantService {
   }
 
   const image = container.Config.Image.split(":")[0];
-  const formatedImage = image.replace(/\//g, "_");
+  const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
   const tag = container.Config.Image.split(":")[1] || "latest";
   const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
   const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
@@ -302,7 +302,7 @@ export default class HomeassistantService {
    */
   public static async publishDeviceMessage(container: any, client: any) {
     const image = container.Config.Image.split(":")[0];
-    const formatedImage = image.replace(/\//g, "_");
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const containerName = container.Name.substring(1);
     const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : null;
