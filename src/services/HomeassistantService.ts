@@ -27,29 +27,30 @@ export default class HomeassistantService {
       const containerName = `${container.Name.substring(1)}`;
 
       let topic, payload;
+      const topicName = ${formatedImage}_${tag};
 
       // Container Id
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_id/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_id/config`;
       payload = this.createPayload("Container ID", image, tag, "dockerId", containerName, null, "mdi:key-variant");
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Container Name
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_name/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_name/config`;
       payload = this.createPayload("Container Name", image, tag, "dockerName", containerName, null, "mdi:label");
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Container Status
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_status/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_status/config`;
       payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName, null, "mdi:checkbox-marked-circle");
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Container Uptime
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_uptime/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_uptime/config`;
       payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "timestamp", "mdi:timer-sand");
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Container Ports
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_ports/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_ports/config`;
       payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName, null, "mdi:lan-connect");
       this.publishMessage(client, topic, payload, {retain: true});
 
@@ -59,17 +60,17 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Docker Tag
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_tag/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_tag/config`;
       payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName, null, "mdi:tag");
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Docker Registry
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_registry/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_registry/config`;
       payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", containerName, null, "mdi:database");
       this.publishMessage(client, topic, payload, {retain: true});
 
       // Docker Update
-      topic = `homeassistant/update/${formatedImage}_${tag}/docker_update/config`;
+      topic = `homeassistant/update/${topicName}/docker_update/config`;
       payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", containerName, container.Id);
       this.publishMessage(client, topic, payload, {retain: true});
     }
@@ -111,9 +112,9 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: `${image + " " + name}`,
-      name: `${deviceName + " " + name}`,
-      unique_id: `${image + " " + name}`,
+      object_id: `${image} ${name}`,
+      name: `${deviceName} ${name}`,
+      unique_id: `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
       device_class: deviceClass,
       value_template: `{{ value_json.${valueName} }}`,
@@ -147,9 +148,9 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: `${image + " " + name}`,
-      name: `${deviceName + " " + name}`,
-      unique_id: `${image + " " + name}`,
+      object_id: `${image} ${name}`,
+      name: `${deviceName} ${name}`,
+      unique_id: `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
       device_class: "firmware",
       availability: [
