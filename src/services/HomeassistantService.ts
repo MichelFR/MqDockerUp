@@ -27,7 +27,7 @@ export default class HomeassistantService {
       const containerName = `${container.Name.substring(1)}`;
 
       let topic, payload;
-      const topicName = ${formatedImage}_${tag};
+      const topicName = `${formatedImage}_${tag}`;
 
       // Container Id
       topic = `homeassistant/sensor/${topicName}/docker_id/config`;
