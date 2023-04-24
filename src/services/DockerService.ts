@@ -40,7 +40,7 @@ export default class DockerService {
     tag: string
   ): Promise<{ registry: any; response: any }> {
     try {
-      const url = getDockerHubUrl(imageName, tag);
+      const url = DockerService.getDockerHubUrl(imageName, tag);
       const response = await axios.get(url);
       if (response.status === 200) {
         return { registry: "Docker Hub", response };
