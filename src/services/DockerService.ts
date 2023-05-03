@@ -20,9 +20,7 @@ export default class DockerService {
 
     return Promise.all(
       containers.map(async (container) => {
-        const containerInfo = await DockerService.docker
-          .getContainer(container.Id)
-          .inspect();
+        const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
         return containerInfo;
       })
     );
@@ -35,10 +33,7 @@ export default class DockerService {
    * @param tag - The tag of the Docker image.
    * @returns A promise that resolves to an object with `registry` and `response` properties.
    */
-  public static async getImageRegistry(
-    imageName: string,
-    tag: string
-  ): Promise<{ registry: any; response: any }> {
+  public static async getImageRegistry(imageName: string, tag: string): Promise<{ registry: any; response: any }> {
     try {
       const url = DockerService.getDockerHubUrl(imageName, tag);
       const response = await axios.get(url);
@@ -99,10 +94,7 @@ export default class DockerService {
     for (const registry of registryList) {
       if (registry.checkEndsWith && imageName.endsWith(`${registry.name}`)) {
         return { registry: registry.displayName, response: null };
-      } else if (
-        !registry.checkEndsWith &&
-        imageName.startsWith(`${registry.name}`)
-      ) {
+      } else if (!registry.checkEndsWith && imageName.startsWith(`${registry.name}`)) {
         return { registry: registry.displayName, response: null };
       }
     }
@@ -150,9 +142,7 @@ export default class DockerService {
    * @param imageId - The ID of the Docker image.
    * @returns A promise that resolves to an `ImageInspectInfo` object.
    */
-  public static async getImageInfo(
-    imageId: string
-  ): Promise<Docker.ImageInspectInfo> {
+  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo> {
     return await DockerService.docker.getImage(imageId).inspect();
   }
 
@@ -170,9 +160,7 @@ export default class DockerService {
 
     // Catch the case if its trying to update MqDockerUp itself
     if (imageName.toLowerCase() === "mqdockerup") {
-      console.error(
-        "You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually."
-      );
+      console.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
       return;
     }
 
@@ -205,17 +193,13 @@ export default class DockerService {
           };
 
           const mounts = info.Mounts;
-          const binds = mounts.map(
-            (mount) => `${mount.Source}:${mount.Destination}`
-          );
+          const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
           containerConfig.HostConfig.Binds = binds;
 
           await container.stop();
           await container.remove();
 
-          const newContainer = await DockerService.docker.createContainer(
-            containerConfig
-          );
+          const newContainer = await DockerService.docker.createContainer(containerConfig);
           await newContainer.start();
 
           return newContainer;
@@ -234,9 +218,7 @@ export default class DockerService {
             const percentage = Math.round((totalProgress / totalSize) * 100);
 
             // print percentage
-            logger.info(
-              `Total progress: ${totalProgress}/${totalSize} (${percentage}%)`
-            );
+            logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
             // Send Progress to MQTT
             // TODO: Needs to be fixed
@@ -315,9 +297,7 @@ export default class DockerService {
    * @returns A promise that resolves to the new Docker container.
    * @throws An error if the container could not be created.
    */
-  public static async createContainer(
-    containerConfig: any
-  ): Promise<Docker.Container> {
+  public static async createContainer(containerConfig: any): Promise<Docker.Container> {
     const container = await DockerService.docker.createContainer({
       ...containerConfig,
     });
@@ -329,14 +309,14 @@ export default class DockerService {
    * Checks if a container exists.
    * @param containerImage - The name of the Docker image to check.
    * @returns A promise that resolves to true if the container exists.
+   * TODO: Change to check if container is running by using the container id instead of the image name
    */
-  public static checkIfContainerExists(
-    containerImage: string
-  ): Promise<boolean> {
-    return DockerService.docker
-      .listContainers()
-      .then((containers) =>
-        containers.some((container) => container.Image === containerImage)
-      );
+  public static checkIfContainerExists(containerImage: string): Promise<boolean> {
+    return DockerService.docker.listContainers().then((containers) => {
+      const imageWithoutTag = containerImage.replace(/:.*/, "");
+      const imageWithAnyTag = new RegExp(`^${imageWithoutTag}(:.*)?$`);
+
+      return containers.some((container) => container.Image.match(imageWithAnyTag));
+    });
   }
 }
