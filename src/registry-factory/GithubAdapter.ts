@@ -1,8 +1,8 @@
-import axios from 'axios';
 import { ImageRegistryAdapter } from './ImageRegistryAdapter';
 
 export class GithubAdapter extends ImageRegistryAdapter {
     private tag: string;
+
     constructor(image: string, tag: string = 'latest', accessToken?: string) {
         super(image, accessToken);
         this.tag = tag;
@@ -12,29 +12,23 @@ export class GithubAdapter extends ImageRegistryAdapter {
         return image.includes('ghcr.io');
     }
 
-    getImageUrl(): string {
-        const [user, repo, ...rest] = this.image.split('/').slice(1);
-        return `https://api.github.com/user/${user}/packages/container/${repo}/versions`;
-    }
-
-    async getDigest(): Promise<string> {
-        const url = this.getImageUrl();
-        const response = await this.http.get(url);
-
-        if (response.status === 200 && response.data) {
-            const newDigest = response.data.metadata.container.tags[this.tag].digest;
-            return newDigest;
-        }
-
-        throw new Error('Failed to get digest');
+    private getImageUrl(): string {
+        const imageNameWithTag = this.image.split(':')[0];
+        const [registry, user, image] = imageNameWithTag.split('/');
+        return `https://${registry}/v2/${user}/${image}/manifests/${this.tag}`;
     }
 
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
-        const newDigest = await this.getDigest();
+        try {
+            const response = await this.http.get(this.getImageUrl());
+            const newDigest = response.headers['docker-content-digest'];
 
-        return {
-            newDigest,
-            isDifferent: this.oldDigest ? newDigest !== this.oldDigest : false,
-        };
+            const isDifferent = this.oldDigest !== newDigest;
+
+            return { newDigest, isDifferent };
+        } catch (error) {
+            console.error(`Failed to check for new github image digest: ${error}`);
+            throw error;
+        }
     }
 }

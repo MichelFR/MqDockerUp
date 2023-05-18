@@ -38,7 +38,7 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
 
             return { newDigest, isDifferent };
         } catch (error) {
-            console.error(`Failed to check for new Docker image digest: ${error}`);
+            console.error(`Failed to check for new Dockerhub image digest: ${error}`);
             throw error;
         }
     }
