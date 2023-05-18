@@ -40,7 +40,7 @@ export default class DockerService {
       if (response.status === 200) {
         return { registry: "Docker Hub", response };
       }
-    } catch (error) {}
+    } catch (error) { }
 
     const registryList = [
       {
