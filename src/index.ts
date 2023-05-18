@@ -53,7 +53,7 @@ client.on("message", async (topic: string, message: any) => {
     const image = data?.device?.model;
     await DockerService.checkIfContainerExists(image).then((containerExists) => {
       if (!containerExists && topic) {
-        HomeassistantService.publishMessage(client, topic, "", {retain: true, qos: 0});
+        HomeassistantService.publishMessage(client, topic, "", { retain: true, qos: 0 });
         logger.info(`Removed missing container ${image} from Home Assistant`);
       }
     });
