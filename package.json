@@ -29,7 +29,7 @@
     "fs": "^0.0.1-security",
     "mqtt": "^4.3.7",
     "winston": "^3.8.2",
-    "yaml": "^2.2.2"
+    "yaml": "^2.3.0"
   },
   "devDependencies": {
     "@types/dockerode": "^3.3.18",
