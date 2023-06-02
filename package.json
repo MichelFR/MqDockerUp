@@ -28,7 +28,7 @@
     "figlet": "^1.6.0",
     "fs": "^0.0.1-security",
     "mqtt": "^4.3.7",
-    "winston": "^3.8.2",
+    "winston": "^3.9.0",
     "yaml": "^2.3.1"
   },
   "devDependencies": {
