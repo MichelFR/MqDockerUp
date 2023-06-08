@@ -68,7 +68,6 @@ client.on("message", async (topic: string, message: any) => {
       }
     });
   }
-});
 
 
   // Update-Handler for the /update message from MQTT
