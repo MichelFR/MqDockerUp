@@ -4,7 +4,7 @@
   "description": "A Node.js application that pushes information about running Docker containers to an MQTT server.",
   "main": "index.js",
   "scripts": {
-    "test": "echo 'No tests defined yet.",
+    "test": "echo 'No tests defined yet.'",
     "watch": "tsc -w",
     "build": "npx tsc",
     "start": "node dist/src/index.js",
