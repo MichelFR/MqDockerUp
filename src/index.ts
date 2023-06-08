@@ -45,7 +45,17 @@ client.on("connect", async () => {
 });
 
 client.on("message", async (topic: string, message: any) => {
-  const data = JSON.parse(message);
+  let data;
+  try {
+    data = JSON.parse(message);
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+    } else {
+      logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+    }
+    return;
+  }
 
   // Missing Docker Container-Handler, removes the /config message from MQTT when the container is missing
   // This removes the entity from Home Assistant if the container is not existing anymore
@@ -58,6 +68,8 @@ client.on("message", async (topic: string, message: any) => {
       }
     });
   }
+});
+
 
   // Update-Handler for the /update message from MQTT
   // This is triggered by the Home Assistant button in the UI to update a container
