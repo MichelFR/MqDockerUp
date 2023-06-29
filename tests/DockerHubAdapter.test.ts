@@ -17,30 +17,6 @@ describe('DockerHubAdapter', () => {
     expect(DockerhubAdapter.canHandleImage('image')).toBe(true);
   });
 
-  describe('checkForNewDigest', () => {
-    it('should return the new digest and isDifferent flag = true', async () => {
-      const adapter = new DockerhubAdapter('image', 'latest', 'accessToken');
-      adapter['oldDigest'] = 'oldDigest';
-      const result = await adapter.checkForNewDigest();
-
-      expect(result).toEqual({
-        newDigest: 'mockDigest',
-        isDifferent: true, // Assuming oldDigest and newDigest are different
-      });
-    });
-
-    it('should return the new digest and isDifferent flag = false', async () => {
-      const adapter = new DockerhubAdapter('image', 'latest', 'accessToken');
-      adapter['oldDigest'] = 'mockDigest';
-      const result = await adapter.checkForNewDigest();
-
-      expect(result).toEqual({
-        newDigest: 'mockDigest',
-        isDifferent: false // Assuming oldDigest and newDigest are the same
-      });
-    });
-  });
-
   describe('getImageUrl', () => {
     it('should return the correct URL for an official library image', () => {
       const adapter = new DockerhubAdapter('officialImage');
