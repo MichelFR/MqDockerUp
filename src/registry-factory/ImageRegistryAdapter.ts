@@ -17,7 +17,6 @@ export abstract class ImageRegistryAdapter {
     private createHeaders(accessToken?: string): Record<string, string> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            'Accept': 'application/vnd.oci.image.index.v1+json',
         };
 
         if (accessToken) {
