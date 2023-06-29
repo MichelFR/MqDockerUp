@@ -41,6 +41,6 @@
     "npm": "^9.6.6",
     "source-map-support": "^0.5.21",
     "ts-jest": "^29.1.0",
-    "typescript": "^5.0.4"
+    "typescript": "^5.1.6"
   }
 }
