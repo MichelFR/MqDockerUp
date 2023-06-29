@@ -86,6 +86,16 @@ The `mqtt` section contains the following parameters:
 - `connectTimeout`: The maximum time, in seconds, to wait for a successful connection to the MQTT broker.
 - `protocolVersion`: The MQTT protocol version to use when connecting to the broker.
 
+### Access Tokens Configuration
+The access tokens configuration is specified in the `accessTokens` section:
+```yaml
+accessTokens:
+  dockerhub: - currently not supported
+  github:
+```
+The `accessTokens` section is used to provide tokens for Dockerhub and GitHub.
+
+
 ## Environment Variables
 
 You can also use environment variables to override the values in the config file. The environment variables must have the same name as the config keys, but in uppercase and with underscores instead of dots. For example, to override the `mqtt.connectionUri` value, you can set the `MQTT_CONNECTIONURI` environment variable. Here is the list of environment variables that you can use:
@@ -98,6 +108,8 @@ You can also use environment variables to override the values in the config file
 - `MQTT_PASSWORD`: The password to use when connecting to the MQTT broker.
 - `MQTT_CONNECTTIMEOUT`: The maximum time, in seconds, to wait for a successful connection to the MQTT broker.
 - `MQTT_PROTOCOLVERSION`: The MQTT protocol version to use when connecting to the broker.
+- `ACCESSTOKENS_DOCKERHUB`: The Dockerhub token.
+- `ACCESSTOKENS_GITHUB`: The Github token.
 
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/7061122/218336295-a040936a-20f3-48da-8835-d9c6746fc8f6.png)
