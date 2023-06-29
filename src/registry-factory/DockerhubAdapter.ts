@@ -15,7 +15,7 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
 
     static canHandleImage(image: string): boolean {
         try {
-            const url = new URL(image);
+            const url = new URL(`https://${image}`);
             const host = url.hostname;
     
             // check if the host is exactly 'docker.io'
