@@ -1,14 +1,20 @@
 import ConfigService from '../services/ConfigService';
 import { ImageRegistryAdapter } from './ImageRegistryAdapter';
+import logger from "../services/LoggerService";
 
 export class GithubAdapter extends ImageRegistryAdapter {
     private tag: string;
 
     constructor(image: string, tag: string = 'latest') {
-        const accessToken =  ConfigService.getConfig().accessTokens.github
+        const accessToken =  ConfigService.getConfig()?.accessTokens?.github;
 
         super(image, accessToken);
         this.tag = tag;
+
+        if (!accessToken) {
+            logger.error('Github access token is not defined');
+        }
+
     }
 
     static get displayName() {
@@ -36,7 +42,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
 
             return { newDigest, isDifferent };
         } catch (error) {
-            console.error(`Failed to check for new github image digest: ${error}`);
+            logger.error(`Failed to check for new github image digest: ${error}`);
             throw error;
         }
     }
