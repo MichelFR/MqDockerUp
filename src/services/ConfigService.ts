@@ -25,6 +25,10 @@ export default class ConfigService {
           connectTimeout: 60,
           protocolVersion: 5,
         },
+        accessTokens: {
+          dockerhub: "",
+          github: "",
+        },
       };
 
       const config = yaml.parse(fs.readFileSync("config.yaml", "utf8"));
