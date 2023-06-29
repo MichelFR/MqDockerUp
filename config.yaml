@@ -13,3 +13,7 @@ mqtt:
   username: "ha"
   connectTimeout: 60
   protocolVersion: 5
+
+accessTokens:
+  dockerhub:
+  github:

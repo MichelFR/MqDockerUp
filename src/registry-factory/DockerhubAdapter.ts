@@ -9,6 +9,10 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
         this.tag = tag;
     }
 
+    static get displayName() {
+        return 'DockerHub';
+    }
+
     static canHandleImage(image: string): boolean {
         const parts = image.split("/");
         const isDockerIo = parts[0].includes("docker.io");

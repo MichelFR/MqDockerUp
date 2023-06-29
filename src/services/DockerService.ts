@@ -1,8 +1,7 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
-import axios from "axios";
 import logger from "./LoggerService";
-import HomeassistantService from "./HomeassistantService";
+import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -27,100 +26,41 @@ export default class DockerService {
   }
 
   /**
-   * Gets the Docker image registry and response information for the specified image name and tag.
+   * Gets the Docker image registry for the specified image name.
    *
    * @param imageName - The name of the Docker image.
    * @param tag - The tag of the Docker image.
-   * @returns A promise that resolves to an object with `registry` and `response` properties.
+   * @returns A promise that resolves to an object with the registry name
    */
-  public static async getImageRegistry(imageName: string, tag: string): Promise<{ registry: any; response: any }> {
-    try {
-      const url = DockerService.getDockerHubUrl(imageName, tag);
-      const response = await axios.get(url);
-      if (response.status === 200) {
-        return { registry: "Docker Hub", response };
-      }
-    } catch (error) { }
-
-    const registryList = [
-      {
-        name: "eu.gcr.io",
-        displayName: "Google Cloud Registry (EU)",
-        checkEndsWith: true,
-      },
-      {
-        name: "asia.gcr.io",
-        displayName: "Google Cloud Registry (Asia)",
-        checkEndsWith: true,
-      },
-      {
-        name: "us.gcr.io",
-        displayName: "Google Cloud Registry (US)",
-        checkEndsWith: true,
-      },
-      {
-        name: "docker.pkg.airfocus.io",
-        displayName: "Airfocus Container Registry",
-      },
-      { name: "quay.io", displayName: "Quay.io" },
-      { name: "lscr.io", displayName: "linuxserver.io (lscr.io)" },
-      { name: "gcr.io", displayName: "Google Container Registry" },
-      { name: "registry.access.redhat.com", displayName: "Red Hat Registry" },
-      { name: "ghcr.io", displayName: "GitHub Container Registry" },
-      { name: "docker.io", displayName: "Docker Hub" },
-      {
-        name: "amazonaws.com",
-        displayName: "Amazon Elastic Container Registry",
-        checkEndsWith: true,
-      },
-      {
-        name: "mcr.microsoft.com",
-        displayName: "Microsoft Container Registry",
-      },
-      {
-        name: "docker.pkg.github.com",
-        displayName: "GitHub Packages Container Registry",
-      },
-      { name: "harbor.domain.com", displayName: "VMware Harbor Registry" },
-      { name: "docker.elastic.co", displayName: "Elastic Container Registry" },
-      { name: "registry.gitlab.com", displayName: "GitLab Container Registry" },
-      { name: "k8s.gcr.io", displayName: "Google Kubernetes Engine Registry" },
-      {
-        name: "docker.pkg.digitalocean.com",
-        displayName: "DigitalOcean Container Registry",
-      },
-    ];
-
-    for (const registry of registryList) {
-      if (registry.checkEndsWith && imageName.endsWith(`${registry.name}`)) {
-        return { registry: registry.displayName, response: null };
-      } else if (!registry.checkEndsWith && imageName.startsWith(`${registry.name}`)) {
-        return { registry: registry.displayName, response: null };
-      }
-    }
-
-    return { registry: "No registry (self-built?)", response: null };
+  public static async getImageRegistryName(imageName: string): Promise<string> {
+    return ImageRegistryAdapterFactory.getRegistryName(imageName);
   }
 
   /**
-   * Generates the Docker Hub API URL to fetch the image and tag information.
-   *
-   * @param {string} image - The name of the Docker image. It can be a user image (e.g., 'micrib/mqdockerup') or an official library image without the 'library/' prefix (e.g., 'debian').
-   * @param {string} tag - The tag of the Docker image (e.g., 'latest').
-   * @returns {string} - The Docker Hub API URL for the specified image and tag.
+   * Gets the new docker image digest for the specified image name.
+   * @param imageName - The name of the Docker image.
+   * @param tag - The tag of the Docker image.
+   * @param oldDigest - The old digest of the Docker image.
+   * @returns A promise that resolves to a string containing the new digest.
    */
-  public static getDockerHubUrl(image: string, tag: string): string {
-    const baseUrl = "https://hub.docker.com/v2/repositories";
-    const parts = image.split("/");
+  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string): Promise<string> {
+    try {
+      let adapter = ImageRegistryAdapterFactory.getAdapter(imageName, tag);
+      adapter['oldDigest'] = oldDigest;
+      let response = await adapter.checkForNewDigest();
 
-    if (parts.length === 1) {
-      // If the image name doesn't include a '/', it's an official library image
-      return `${baseUrl}/library/${image}/tags?name=${tag}`;
-    } else {
-      // If the image name includes a '/', it's a user image
-      return `${baseUrl}/${image}/tags?name=${tag}`;
+      if (response.isDifferent) {
+        return response.newDigest;
+      } else {
+        return oldDigest;
+      }
+
+    } catch (error: any) {
+      logger.error(error);
+      return "Unknown";
     }
   }
+
 
   /**
    * Gets the private registry for the specified image name.

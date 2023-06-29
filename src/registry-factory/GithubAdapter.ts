@@ -1,11 +1,18 @@
+import ConfigService from '../services/ConfigService';
 import { ImageRegistryAdapter } from './ImageRegistryAdapter';
 
 export class GithubAdapter extends ImageRegistryAdapter {
     private tag: string;
 
-    constructor(image: string, tag: string = 'latest', accessToken?: string) {
+    constructor(image: string, tag: string = 'latest') {
+        const accessToken =  ConfigService.getConfig().accessTokens.github
+
         super(image, accessToken);
         this.tag = tag;
+    }
+
+    static get displayName() {
+        return 'Github Packages';
     }
 
     static canHandleImage(image: string): boolean {
