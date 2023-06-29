@@ -22,7 +22,16 @@ export class GithubAdapter extends ImageRegistryAdapter {
     }
 
     static canHandleImage(image: string): boolean {
-        return image.includes('ghcr.io');
+        try {
+            const url = new URL(image);
+            const host = url.hostname;
+    
+            // check if the host is exactly 'ghcr.io'
+            return host === 'ghcr.io';
+        } catch (error) {
+            // if the image string is not a valid URL, it's not a Github image
+            return false;
+        }
     }
 
     private getImageUrl(): string {

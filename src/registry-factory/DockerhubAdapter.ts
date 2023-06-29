@@ -14,11 +14,21 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
     }
 
     static canHandleImage(image: string): boolean {
-        const parts = image.split("/");
-        const isDockerIo = parts[0].includes("docker.io");
-        const isDefaultDocker = parts.length === 1 || (parts.length === 2 && !parts[0].includes("."));
-        
-        return isDockerIo || isDefaultDocker;
+        try {
+            const url = new URL(image);
+            const host = url.hostname;
+    
+            // check if the host is exactly 'docker.io'
+            const isDockerIo = host === 'docker.io';
+    
+            const parts = image.split("/");
+            const isDefaultDocker = parts.length === 1 || (parts.length === 2 && !parts[0].includes("."));
+    
+            return isDockerIo || isDefaultDocker;
+        } catch (error) {
+            // if the image string is not a valid URL, it's not a Docker image
+            return false;
+        }
     }
 
     private getImageUrl(): string {
