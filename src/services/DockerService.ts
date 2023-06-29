@@ -44,7 +44,7 @@ export default class DockerService {
    * @param oldDigest - The old digest of the Docker image.
    * @returns A promise that resolves to a string containing the new digest.
    */
-  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string): Promise<string> {
+  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string): Promise<string|null> {
     try {
       let adapter = ImageRegistryAdapterFactory.getAdapter(imageName, tag);
       adapter['oldDigest'] = oldDigest;
@@ -57,7 +57,7 @@ export default class DockerService {
       }
 
     } catch (error: any) {
-      return oldDigest;
+      return null;
     }
   }
 
