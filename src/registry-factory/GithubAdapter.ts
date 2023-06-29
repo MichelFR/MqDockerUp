@@ -27,7 +27,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
 
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
         try {
-            this.http.defaults.headers['Accept'] = 'application/vnd.docker.distribution.manifest.v2+json';
+            this.http.defaults.headers['Accept'] = 'application/vnd.oci.image.index.v1+json';
             
             const response = await this.http.get(this.getImageUrl());
             const newDigest = this.removeSHA256Prefix(response.headers['docker-content-digest']);
