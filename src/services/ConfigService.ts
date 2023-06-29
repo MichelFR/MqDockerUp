@@ -43,6 +43,10 @@ export default class ConfigService {
         config.mqtt[key] = process.env[`MQTT_${key.toUpperCase()}`] ?? config.mqtt[key];
       }
 
+      for (const key of Object.keys(defaults.mqtt)) {
+        config.accessTokens[key] = process.env[`ACCESSTOKENS_${key.toUpperCase()}`] ?? config.accessTokens[key];
+      }
+
       // Merge the config values with the default values
       return Object.assign(defaults, config);
     } catch (e) {
