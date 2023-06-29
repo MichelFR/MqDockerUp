@@ -20,12 +20,6 @@ const logFormat = winston.format.combine(
 
     let output = `\x1b[90m${timestamp}\x1b[0m [${level}] ${message}`;
 
-    const extraData = Object.keys(args).length ? JSON.stringify(args, null, 2) : '';
-
-    if (extraData) {
-      output += `\n${extraData}`;
-    }
-
     return output;
   })
 );

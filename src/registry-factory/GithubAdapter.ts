@@ -28,7 +28,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
         try {
             const response = await this.http.get(this.getImageUrl());
-            const newDigest = response.headers['docker-content-digest'];
+            const newDigest = this.removeSHA256Prefix(response.headers['docker-content-digest']);
 
             const isDifferent = this.oldDigest !== newDigest;
 

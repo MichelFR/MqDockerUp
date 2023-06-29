@@ -36,7 +36,7 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
         try {
             const response = await this.http.get(this.getImageUrl());
-            const newDigest = response.data.results[0].images[0].digest;
+            const newDigest = this.removeSHA256Prefix(response.data.results[0].images[0].digest);
 
             const isDifferent = this.oldDigest !== newDigest;
 
