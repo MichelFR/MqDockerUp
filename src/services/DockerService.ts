@@ -25,6 +25,7 @@ export default class DockerService {
     );
   }
 
+
   /**
    * Gets the Docker image registry for the specified image name.
    *
@@ -56,8 +57,7 @@ export default class DockerService {
       }
 
     } catch (error: any) {
-      logger.error(error);
-      return "Unknown";
+      return oldDigest;
     }
   }
 
