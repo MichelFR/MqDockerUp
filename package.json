@@ -1,10 +1,10 @@
 {
   "name": "mqdockerup",
-  "version": "0.16.4",
+  "version": "1.0.0",
   "description": "A Node.js application that pushes information about running Docker containers to an MQTT server.",
   "main": "index.js",
   "scripts": {
-    "test": "echo 'No tests defined yet.'",
+    "test": "jest",
     "watch": "tsc -w",
     "build": "npx tsc",
     "start": "node dist/src/index.js",
@@ -34,10 +34,13 @@
   "devDependencies": {
     "@types/dockerode": "^3.3.19",
     "@types/figlet": "^1.5.6",
+    "@types/jest": "^29.5.1",
     "install": "^0.13.0",
+    "jest": "^29.5.0",
     "nodemon": "^2.0.22",
     "npm": "^9.7.2",
     "source-map-support": "^0.5.21",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.1.6"
   }
 }

@@ -3,7 +3,7 @@ import figlet from 'figlet';
 import fs from 'fs';
 import path from 'path';
 
-const packageJson = require("../../../package.json");
+const packageJson = require("../../package.json");
 
 const logsDirectory = path.join(__dirname, 'logs');
 
@@ -19,12 +19,6 @@ const logFormat = winston.format.combine(
     const { timestamp, level, message, ...args } = info;
 
     let output = `\x1b[90m${timestamp}\x1b[0m [${level}] ${message}`;
-
-    const extraData = Object.keys(args).length ? JSON.stringify(args, null, 2) : '';
-
-    if (extraData) {
-      output += `\n${extraData}`;
-    }
 
     return output;
   })

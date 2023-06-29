@@ -228,72 +228,59 @@ export default class HomeassistantService {
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
     const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
     let newDigest = null;
-    let response = null;
-    let images = null;
 
-    let registryInformation = await DockerService.getImageRegistry(image, tag);
-    response = registryInformation?.response;
+    newDigest = await DockerService.getImageNewDigest(image, tag, currentDigest);
+
     if (currentDigest) {
-
-      if (!response?.data) {
-        logger.error("No Images found:");
-        logger.error(response);
-      } else {
-        images = response.data?.results[0]?.images;
-        if (images && images.length > 0) {
-          newDigest = response?.data?.results[0]?.digest?.split(":")[1];
-        }
-      }
-    }
-
-    if (log) {
-      if (currentDigest && newDigest) {
-        if (currentDigest !== newDigest) {
-          logger.info(`New version available for image ${image}:${tag}`);
+      if (log) {
+        if (currentDigest && newDigest) {
+          if (currentDigest !== newDigest) {
+            logger.info(`New version available for image ${image}:${tag}`);
+          } else {
+            logger.info(`Image ${image}:${tag} is up-to-date`);
+          }
         } else {
-          logger.info(`Image ${image}:${tag} is up-to-date`);
-        }
-      } else {
-        if (!imageInfo?.RepoDigests) {
-          logger.warn(`Failed to find current digest for image ${image}:${tag}`);
-        }
-        if (!newDigest) {
-          logger.warn(`Failed to find new digest for image ${image}:${tag}`);
+          if (!imageInfo?.RepoDigests) {
+            logger.warn(`Failed to find current digest for image ${image}:${tag}`);
+          }
+          if (!newDigest) {
+            logger.warn(`Failed to find new digest for image ${image}:${tag}`);
+          }
         }
       }
-    }
 
-    // Update entity payload
-    const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
-    let updatePayload = {
-      installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
-      latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
-      release_notes: null,
-      release_url: null,
-      entity_picture: null,
-      title: `${image}:${tag}`,
-      progress: 0,
-      update: {
-        state: currentDigest && newDigest && currentDigest !== newDigest ? "available" : "idle",
+      // Update entity payload
+      const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+      let updatePayload = {
         installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
         latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
-        last_check: new Date().toISOString(),
-        progress: null || 0,
-        remaining: null || 0,
-      }
-    };
+        release_notes: null,
+        release_url: null,
+        entity_picture: null,
+        title: `${image}:${tag}`,
+        progress: 0,
+        update: {
+          state: currentDigest && newDigest && currentDigest !== newDigest ? "available" : "idle",
+          installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
+          latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
+          last_check: new Date().toISOString(),
+          progress: null || 0,
+          remaining: null || 0,
+        }
+      };
 
-    if (progress !== null && remaining !== null) {
-      updatePayload.update.progress = progress;
-      updatePayload.progress = progress;
-      updatePayload.update.remaining = remaining;
+      if (progress !== null && remaining !== null) {
+        updatePayload.update.progress = progress;
+        updatePayload.progress = progress;
+        updatePayload.update.remaining = remaining;
 
-      if (state) {
-        updatePayload.update.state = state;
+        if (state) {
+          updatePayload.update.state = state;
+        }
       }
+
+      this.publishMessage(client, updateTopic, updatePayload, { retain: true });
     }
-
-    this.publishMessage(client, updateTopic, updatePayload, { retain: true });
   }
 
   /**
@@ -308,10 +295,7 @@ export default class HomeassistantService {
     const containerName = container.Name.substring(1);
     const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : null;
 
-    let registry = null;
-
-    let registryInformation = await DockerService.getImageRegistry(image, tag);
-    registry = registryInformation.registry;
+    let registry = await DockerService.getImageRegistryName(image);
 
     const topic = `${config.mqtt.topic}/${formatedImage}`;
     const payload = {
