@@ -1,11 +1,13 @@
 import { DockerhubAdapter } from './DockerhubAdapter';
 import { GithubAdapter } from './GithubAdapter';
 import { ImageRegistryAdapter } from './ImageRegistryAdapter';
+import { LscrAdapter } from './LscrAdapter';
 
 export class ImageRegistryAdapterFactory {
     private static registryAdapters = [
         DockerhubAdapter,
         GithubAdapter,
+        LscrAdapter,
         // add other adapters here in a similar way
     ];
 
