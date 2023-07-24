@@ -50,7 +50,7 @@ export class LscrAdapter extends ImageRegistryAdapter {
 
             return { newDigest, isDifferent };
         } catch (error) {
-            console.error(`Failed to check for new Dockerhub image digest: ${error}`);
+            console.error(`Failed to check for new lscr.io image digest: ${error}`);
             throw error;
         }
     }
