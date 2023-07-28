@@ -17,6 +17,7 @@ export class ImageRegistryAdapterFactory {
                 return new adapter(image, tag, accessToken);
             }
         }
+        
         throw new Error(`No adapter found for the image: ${image}`);
     }
 
@@ -26,7 +27,8 @@ export class ImageRegistryAdapterFactory {
                 return adapter.displayName;
             }
         }
-        throw new Error(`No registry found for the image: ${image}`);
+
+        return "Not Found";
     }
 
 }
