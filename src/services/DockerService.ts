@@ -57,6 +57,7 @@ export default class DockerService {
       }
 
     } catch (error: any) {
+      logger.error(error);
       return null;
     }
   }
