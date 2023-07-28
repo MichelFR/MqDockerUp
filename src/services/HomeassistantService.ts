@@ -1,9 +1,9 @@
-import DockerService from "./DockerService";
-import ConfigService from "./ConfigService";
-import logger from "./LoggerService"
+import DockerService from "../services/DockerService";
+import ConfigService from "../services/ConfigService";
+import logger from "../services/LoggerService"
 
 const config = ConfigService.getConfig();
-const packageJson = require("../../../package.json");
+const packageJson = require("../../package");
 
 export default class HomeassistantService {
   public static async publishAvailability(client: any, online: boolean) {
