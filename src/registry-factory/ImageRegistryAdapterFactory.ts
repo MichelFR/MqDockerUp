@@ -1,7 +1,7 @@
-import { DockerhubAdapter } from './DockerhubAdapter';
-import { GithubAdapter } from './GithubAdapter';
-import { ImageRegistryAdapter } from './ImageRegistryAdapter';
-import { LscrAdapter } from './LscrAdapter';
+import { DockerhubAdapter } from "./DockerhubAdapter";
+import { GithubAdapter } from "./GithubAdapter";
+import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
+import { LscrAdapter } from "./LscrAdapter";
 
 export class ImageRegistryAdapterFactory {
     private static registryAdapters = [
