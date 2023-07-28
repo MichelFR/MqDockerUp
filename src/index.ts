@@ -1,4 +1,4 @@
-import mqtt from "mqtt";
+import * as mqtt from "mqtt";
 import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
