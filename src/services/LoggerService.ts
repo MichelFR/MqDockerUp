@@ -3,7 +3,7 @@ import figlet from 'figlet';
 import fs from 'fs';
 import path from 'path';
 
-const packageJson = require("../../../package.json");
+const packageJson = require("../../package");
 
 const logsDirectory = path.join(__dirname, 'logs');
 

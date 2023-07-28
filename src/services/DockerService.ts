@@ -1,6 +1,6 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
-import logger from "./LoggerService";
+import logger from "../services/LoggerService";
 import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
 
 /**

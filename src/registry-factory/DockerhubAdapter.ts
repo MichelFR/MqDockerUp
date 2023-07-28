@@ -1,4 +1,4 @@
-import { ImageRegistryAdapter } from './ImageRegistryAdapter';
+import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
 
 export class DockerhubAdapter extends ImageRegistryAdapter {
     private static readonly DOCKER_API_URL = 'https://hub.docker.com/v2/repositories';
