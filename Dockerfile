@@ -1,7 +1,19 @@
-FROM node:latest
+FROM node:18-alpine
+
+# Install 'tini' to handle signals properly
+RUN apk add --no-cache tini
+
+# Create and set the working directory
 WORKDIR /app
-COPY package.json .
-RUN npm install
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy the rest of the application
 COPY . .
-RUN npm run build
-CMD ["npm", "run", "start"]
+
+# Specify the command to run
+CMD ["tini", "--", "npm", "run", "start"]

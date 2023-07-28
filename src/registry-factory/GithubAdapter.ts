@@ -1,6 +1,6 @@
-import ConfigService from '../services/ConfigService';
-import { ImageRegistryAdapter } from './ImageRegistryAdapter';
+import ConfigService from "../services/ConfigService";
 import logger from "../services/LoggerService";
+import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
 
 export class GithubAdapter extends ImageRegistryAdapter {
     private tag: string;
