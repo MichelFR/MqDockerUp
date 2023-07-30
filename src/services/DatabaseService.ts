@@ -90,17 +90,19 @@ export default class DatabaseService {
 
 
     /**
-     * Checks if a container exists.
-     * @param id The container id
-     * @param callback The callback function to call with the results
-     */
-    public static async containerExists(id: string, callback: Function) {
-        this.db.get('SELECT * FROM containers WHERE id = ?', [id], (err: any, container: any) => {
-            if (err) {
-                callback(err, null);
-            } else {
-                callback(null, !!container);
-            }
+ * Checks if an container exists in the database.
+ * @param id The container id
+ * @return Promise<boolean>
+ */
+    public static containerExists(id: string): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.db.get('SELECT * FROM containers WHERE id = ?', [id], (err: any, container: any) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(!!container);
+                }
+            });
         });
     }
 

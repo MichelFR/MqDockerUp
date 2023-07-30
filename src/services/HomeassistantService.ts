@@ -34,11 +34,9 @@ export default class HomeassistantService {
       const containerName = `${container.Name.substring(1)}`;
       let containerIsInDb = false;
 
-      await DatabaseService.getContainer(container.Id, (err: any, container: any) => {
-        if (!err) {
-          containerIsInDb = !!container;
-        }
-      });
+      await DatabaseService.containerExists(container.Id).then((exists) => {
+        containerIsInDb = exists;
+      })
 
       if (!containerIsInDb) {
         // Save container info to database
