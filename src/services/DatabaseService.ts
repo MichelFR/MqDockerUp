@@ -62,7 +62,7 @@ export default class DatabaseService {
   * @param callback The callback function to call with the results
   */
     public static async getContainers(callback: Function) {
-        this.db.all('SELECT id FROM containers', [], (err: any, rows: any) => {
+        this.db.all('SELECT * FROM containers', [], (err: any, rows: any) => {
             callback(err, rows);
         });
     }
