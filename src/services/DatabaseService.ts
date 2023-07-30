@@ -44,19 +44,17 @@ export default class DatabaseService {
 
     /**
      * Gets all containers from the database.
-     * @param callback The callback function to call with the results
      */
-    public static async getContainers(callback: Function) {
-        this.db.all('SELECT id FROM containers', []);
+    public static async getContainers() {
+        return this.db.all('SELECT id FROM containers', []);
     }
 
     /**
      * Gets a container from the database.
      * @param id The container id
-     * @param callback The callback function to call with the results
      */
     public static async getContainer(id: string, callback: Function) {
-        this.db.get('SELECT * FROM containers WHERE id = ?');
+        return this.db.get('SELECT * FROM containers WHERE id = ?');
     }
 
     /**
@@ -64,7 +62,7 @@ export default class DatabaseService {
      * @param containerId The container id
      */
     public static async getTopics(containerId: string, callback: Function) {
-        this.db.all('SELECT * FROM topics WHERE containerId = ?', [containerId]);
+        return this.db.all('SELECT * FROM topics WHERE containerId = ?', [containerId]);
     }
 
     /**
