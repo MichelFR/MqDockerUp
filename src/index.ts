@@ -5,6 +5,8 @@ import HomeassistantService from "./services/HomeassistantService";
 import DatabaseService from "./services/DatabaseService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
+const _ = require('lodash');
+
 require('source-map-support').install();
 
 const config = ConfigService.getConfig();
@@ -113,6 +115,17 @@ client.on("message", async (topic: string, message: any) => {
     }
   }
 });
+
+// Docker event handlers
+// TODO: Do this in a more elegant way
+const containerEventHandler = _.debounce((eventName: string, data: {containerName: string, containerId: string}) => {
+  console.log(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
+}, 300);
+
+DockerService.events.on('create', (data) => containerEventHandler('created', data));
+DockerService.events.on('start', (data) => containerEventHandler('started', data));
+DockerService.events.on('die', (data) => containerEventHandler('died', data));
+
 
 const exitHandler = (exitCode: number, error?: any) => {
   HomeassistantService.publishAvailability(client, false);
