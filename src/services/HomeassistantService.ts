@@ -1,11 +1,18 @@
 import DockerService from "../services/DockerService";
 import ConfigService from "../services/ConfigService";
+import DatabaseService from "../services/DatabaseService";
 import logger from "../services/LoggerService"
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
 
 export default class HomeassistantService {
+
+  /**
+   * Published availability message to the MQTT broker to indicate if the service is online or offline
+   * @param client The MQTT client
+   * @param online Indicates if the service is online or offline
+   */
   public static async publishAvailability(client: any, online: boolean) {
     const payload = online ? "online" : "offline";
     const topic = `${config.mqtt.topic}/availability`;
@@ -26,6 +33,10 @@ export default class HomeassistantService {
       const tag = container.Config.Image.split(":")[1] || "latest";
       const containerName = `${container.Name.substring(1)}`;
 
+      // Save container info to database
+      logger.info(`Adding container ${containerName} to database`);
+      await DatabaseService.addContainer(container.Id, containerName, image, tag);
+
       let topic, payload;
       const topicName = `${formatedImage}_${tag}`;
 
@@ -33,49 +44,62 @@ export default class HomeassistantService {
       topic = `homeassistant/sensor/${topicName}/docker_id/config`;
       payload = this.createPayload("Container ID", image, tag, "dockerId", containerName, null, "mdi:key-variant");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Container Name
       topic = `homeassistant/sensor/${topicName}/docker_name/config`;
       payload = this.createPayload("Container Name", image, tag, "dockerName", containerName, null, "mdi:label");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Container Status
       topic = `homeassistant/sensor/${topicName}/docker_status/config`;
       payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName, null, "mdi:checkbox-marked-circle");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Container Uptime
       topic = `homeassistant/sensor/${topicName}/docker_uptime/config`;
       payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "timestamp", "mdi:timer-sand");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Container Ports
       topic = `homeassistant/sensor/${topicName}/docker_ports/config`;
       payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName, null, "mdi:lan-connect");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Image
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
       payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName, null, "mdi:image");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Tag
       topic = `homeassistant/sensor/${topicName}/docker_tag/config`;
       payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName, null, "mdi:tag");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Registry
       topic = `homeassistant/sensor/${topicName}/docker_registry/config`;
       payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", containerName, null, "mdi:database");
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Update
       topic = `homeassistant/update/${topicName}/docker_update/config`;
       payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", containerName, container.Id);
       this.publishMessage(client, topic, payload, { retain: true });
+      await DatabaseService.addTopic(topic, container.Id);
     }
   }
 
+  /**
+   * Publishes the device message to the MQTT broker
+   * @param client The MQTT client
+   */
   public static async publishMessages(client: any) {
     const containers = await DockerService.listContainers();
 
@@ -88,6 +112,13 @@ export default class HomeassistantService {
     }
   }
 
+  /**
+   * Publishes the device message to the MQTT broker
+   * @param client The MQTT client
+   * @param topic The topic to publish the message to
+   * @param payload The payload to publish
+   * @param configObject The config object
+   */
   public static async publishMessage(client: any, topic: string, payload: object | string, configObject: object) {
     if (typeof payload != "string") {
       payload = JSON.stringify(payload);
