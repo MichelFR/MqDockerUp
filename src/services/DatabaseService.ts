@@ -2,7 +2,7 @@ import logger from "../services/LoggerService";
 const sqlite3 = require('sqlite3').verbose();
 
 export default class DatabaseService {
-    static db = new sqlite3.Database('./database.db', (err: any) => {
+    static db = new sqlite3.Database('./data/database.db', (err: any) => {
         if (err) {
             logger.error(err.message);
         }
