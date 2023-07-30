@@ -14,8 +14,23 @@ export default class DatabaseService {
      * Creates the tables if they don't exist.
      */
     static init() {
-        this.db.run('CREATE TABLE IF NOT EXISTS containers(id TEXT PRIMARY KEY, name TEXT, image TEXT, tag TEXT)');
-        this.db.run('CREATE TABLE IF NOT EXISTS topics(id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT, containerId TEXT)');
+        this.db.serialize(() => {
+            this.db.run('CREATE TABLE IF NOT EXISTS containers(id TEXT PRIMARY KEY, name TEXT, image TEXT, tag TEXT)', (err: Error | null) => {
+                if (err) {
+                    logger.error(err.message);
+                    return;
+                }
+
+                this.db.run('CREATE TABLE IF NOT EXISTS topics(id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT, containerId TEXT)', (err: Error | null) => {
+                    if (err) {
+                        logger.error(err.message);
+                        return;
+                    }
+
+                    logger.info('Database initialized successfully');
+                });
+            });
+        });
     }
 
     /**
@@ -43,18 +58,24 @@ export default class DatabaseService {
     }
 
     /**
-     * Gets all containers from the database.
-     */
-    public static async getContainers() {
-        return this.db.all('SELECT id FROM containers', []);
+  * Gets all containers from the database.
+  * @param callback The callback function to call with the results
+  */
+    public static async getContainers(callback: Function) {
+        this.db.all('SELECT id FROM containers', [], (err: any, rows: any) => {
+            callback(err, rows);
+        });
     }
 
     /**
      * Gets a container from the database.
      * @param id The container id
+     * @param callback The callback function to call with the results
      */
     public static async getContainer(id: string, callback: Function) {
-        return this.db.get('SELECT * FROM containers WHERE id = ?');
+        this.db.get('SELECT * FROM containers WHERE id = ?', [id], (err: any, row: any) => {
+            callback(err, row);
+        });
     }
 
     /**
@@ -62,7 +83,25 @@ export default class DatabaseService {
      * @param containerId The container id
      */
     public static async getTopics(containerId: string, callback: Function) {
-        return this.db.all('SELECT * FROM topics WHERE containerId = ?', [containerId]);
+        this.db.all('SELECT * FROM topics WHERE containerId = ?', [containerId], (err: any, rows: any) => {
+            callback(err, rows);
+        });
+    }
+
+
+    /**
+     * Checks if a container exists.
+     * @param id The container id
+     * @param callback The callback function to call with the results
+     */
+    public static async containerExists(id: string, callback: Function) {
+        this.db.get('SELECT * FROM containers WHERE id = ?', [id], (err: any, container: any) => {
+            if (err) {
+                callback(err, null);
+            } else {
+                callback(null, !!container);
+            }
+        });
     }
 
     /**
@@ -74,17 +113,6 @@ export default class DatabaseService {
         this.db.run('DELETE FROM topics WHERE containerId = ?', [id]);
     }
 
-    /**
-     * Opens the database connection.
-     */
-    public static async open() {
-        this.db = new sqlite3.Database('./database.db', (err: any) => {
-            if (err) {
-                logger.error(err.message);
-            }
-            logger.info('Connected to the database.');
-        });
-    }
 
     /**
      * Closes the database connection.
