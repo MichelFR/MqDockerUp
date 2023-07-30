@@ -32,19 +32,19 @@ export default class HomeassistantService {
       const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
       const tag = container.Config.Image.split(":")[1] || "latest";
       const containerName = `${container.Name.substring(1)}`;
+      let containerIsInDb = false;
 
-      // Check if container already exists in database
-      const containerExists = await DatabaseService.getContainers().then((containers: any) => {
-        return containers.some((c: any) => c.id === container.Id);
+      await DatabaseService.getContainer(container.Id, (err: any, container: any) => {
+        if (!err) {
+          containerIsInDb = !!container;
+        }
       });
 
-      if (!containerExists) {
+      if (!containerIsInDb) {
         // Save container info to database
         logger.info(`Adding container ${containerName} to database`);
         await DatabaseService.addContainer(container.Id, containerName, image, tag);
       }
-
-      
 
       let topic, payload;
       const topicName = `${formatedImage}_${tag}`;
@@ -53,55 +53,55 @@ export default class HomeassistantService {
       topic = `homeassistant/sensor/${topicName}/docker_id/config`;
       payload = this.createPayload("Container ID", image, tag, "dockerId", containerName, null, "mdi:key-variant");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Name
       topic = `homeassistant/sensor/${topicName}/docker_name/config`;
       payload = this.createPayload("Container Name", image, tag, "dockerName", containerName, null, "mdi:label");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Status
       topic = `homeassistant/sensor/${topicName}/docker_status/config`;
       payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName, null, "mdi:checkbox-marked-circle");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Uptime
       topic = `homeassistant/sensor/${topicName}/docker_uptime/config`;
       payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "timestamp", "mdi:timer-sand");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Ports
       topic = `homeassistant/sensor/${topicName}/docker_ports/config`;
       payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName, null, "mdi:lan-connect");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Image
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
       payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName, null, "mdi:image");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Tag
       topic = `homeassistant/sensor/${topicName}/docker_tag/config`;
       payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName, null, "mdi:tag");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Registry
       topic = `homeassistant/sensor/${topicName}/docker_registry/config`;
       payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", containerName, null, "mdi:database");
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Update
       topic = `homeassistant/update/${topicName}/docker_update/config`;
       payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", containerName, container.Id);
       this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerExists) await DatabaseService.addTopic(topic, container.Id);
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
     }
   }
 
