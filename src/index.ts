@@ -49,7 +49,7 @@ const checkAndPublishUpdates = async (): Promise<void> => {
 
           // Remove the container and its associated topics from the database
           DatabaseService.deleteContainer(containerId);
-          logger.info(`Removed missing container ${containerId} from Home Assistant and database.`);
+          logger.info(`Removed missing container ${row.name} from Home Assistant and database.`);
         });
       }
     });
