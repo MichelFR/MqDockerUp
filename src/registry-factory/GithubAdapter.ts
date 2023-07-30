@@ -41,18 +41,23 @@ export class GithubAdapter extends ImageRegistryAdapter {
     }
 
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
-        try {
-            this.http.defaults.headers['Accept'] = 'application/vnd.oci.image.index.v1+json';
-            
-            const response = await this.http.get(this.getImageUrl());
-            const newDigest = this.removeSHA256Prefix(response.headers['docker-content-digest']);
-
-            const isDifferent = this.oldDigest !== newDigest;
-
-            return { newDigest, isDifferent };
-        } catch (error) {
-            logger.error(`Failed to check for new github image digest: ${error}`);
-            throw error;
+        const accessTokenSet = !!ConfigService.getConfig()?.accessTokens?.github;
+        if (accessTokenSet) {
+            try {
+                this.http.defaults.headers['Accept'] = 'application/vnd.oci.image.index.v1+json';
+                
+                const response = await this.http.get(this.getImageUrl());
+                const newDigest = this.removeSHA256Prefix(response.headers['docker-content-digest']);
+    
+                const isDifferent = this.oldDigest !== newDigest;
+    
+                return { newDigest, isDifferent };
+            } catch (error) {
+                logger.error(`Failed to check for new github image digest: ${error}`);
+                throw error;
+            }
         }
+
+        return { newDigest: "", isDifferent: true };
     }
 }
