@@ -252,7 +252,7 @@ export default class DockerService {
    * @returns A promise that resolves to true if the container exists.
    * TODO: Change to check if container is running by using the container id instead of the image name
    */
-  public static checkIfContainerExists(containerImage: string): Promise<boolean> {
+  public static async checkIfContainerExists(containerImage: string): Promise<boolean> {
     return DockerService.docker.listContainers().then((containers) => {
       const imageWithoutTag = containerImage.replace(/:.*/, "");
       const imageWithAnyTag = new RegExp(`^${imageWithoutTag}(:.*)?$`);

@@ -2,12 +2,13 @@ import * as mqtt from "mqtt";
 import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
+import DatabaseService from "./services/DatabaseService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
 require('source-map-support').install();
 
 const config = ConfigService.getConfig();
-const client = mqtt.connect(config.mqtt.connectionUri, {
+const client = mqtt.connectAsync(config.mqtt.connectionUri, {
   username: config.mqtt.username,
   password: config.mqtt.password,
   protocolVersion: config.mqtt.protocolVersion,
@@ -15,12 +16,49 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   clientId: config.mqtt.clientId,
 });
 
+// Check for new/old containers and publish updates
 const checkAndPublishUpdates = async (): Promise<void> => {
-  logger.info("Checking for new/old containers...");
+  logger.info("Checking for new containers...");
+  const containers = await DockerService.listContainers();
+  const runningContainerIds = containers.map(container => container.Id);
+
+  // Get all container IDs in the database
+  DatabaseService.getContainers((err: any, rows: any) => {
+    if (err) {
+      logger.error(err);
+      return;
+    }
+
+    // Iterate over each container in the database
+    rows.forEach((row: any) => {
+      const containerId = row.id;
+
+      // If the container is not in the running containers list, then it has stopped
+      if (!runningContainerIds.includes(containerId)) {
+        // Get the topics associated with this container
+        DatabaseService.getTopics(containerId, (err: any, topics: any) => {
+          if (err) {
+            logger.error(err);
+            return;
+          }
+
+          // Iterate over each topic and publish an empty message
+          topics.forEach((topic: any) => {
+            HomeassistantService.publishMessage(client, topic.topic, "", { retain: true, qos: 0 });
+          });
+
+          // Remove the container and its associated topics from the database
+          DatabaseService.deleteContainer(containerId);
+          logger.info(`Removed missing container ${containerId} from Home Assistant and database.`);
+        });
+      }
+    });
+  });
+
+  logger.info("Checking for old containers...");
   await HomeassistantService.publishConfigMessages(client);
 
   logger.info("Checking for image updates...");
-
   await HomeassistantService.publishAvailability(client, true);
   await HomeassistantService.publishMessages(client);
 
@@ -34,52 +72,52 @@ const startInterval = async () => {
   intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
 };
 
-client.on("connect", async () => {
-  logger.info("Connected to MQTT broker");
-  await HomeassistantService.publishAvailability(client, true);
-  await checkAndPublishUpdates();
-  startInterval();
+client.then(async (client) => {
+  // Connected to MQTT broker
+  client.on('connect', async function () {
+    logger.info('MQTT client successfully connected');
 
-  client.subscribe(`${config.mqtt.topic}/update`);
-  client.subscribe('homeassistant/+/+/+/config', { qos: 0 });
-});
+    await HomeassistantService.publishAvailability(client, true);
+    await checkAndPublishUpdates();
+    startInterval();
 
-client.on("message", async (topic: string, message: any) => {
-  let data;
-  try {
-    data = JSON.parse(message);
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-    } else {
-      logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-    }
-    return;
-  }
+    client.subscribeAsync(`${config.mqtt.topic}/update`);
+  });
 
-  // Missing Docker Container-Handler, removes the /config message from MQTT when the container is missing
-  // This removes the entity from Home Assistant if the container is not existing anymore
-  if (data?.device?.manufacturer === "MqDockerUp" && topic?.endsWith("/config")) {
-    const image = data?.device?.model;
-    await DockerService.checkIfContainerExists(image).then((containerExists) => {
-      if (!containerExists && topic) {
-        HomeassistantService.publishMessage(client, topic, "", { retain: true, qos: 0 });
-        logger.info(`Removed missing container ${image} from Home Assistant`);
-      }
-    });
-  }
-
+  client.on('error', async function (err) {
+    logger.error('MQTT client connection error: ', err);
+    exitHandler(1, err)
+  });
 
   // Update-Handler for the /update message from MQTT
-  // This is triggered by the Home Assistant button in the UI to update a container
-  if ((topic = "mqdockerup/update" && data?.containerId)) {
-    const image = data?.image;
-    logger.info(`Got update message for ${image}`);
-    await DockerService.updateContainer(data?.containerId, client);
-    logger.info("Updated container");
+  client.on("message", async (topic: string, message: any) => {
+    if (topic = "mqdockerup/update") {
+      let data;
+      try {
+        data = JSON.parse(message);
+      } catch (error) {
+        if (error instanceof Error) {
+          logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+        } else {
+          logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+        }
+        return;
+      }
 
-    checkAndPublishUpdates();
-  }
+      // Update-Handler for the /update message from MQTT
+      // This is triggered by the Home Assistant button in the UI to update a container
+      if (data?.containerId) {
+        const image = data?.image;
+        logger.info(`Got update message for ${image}`);
+        await DockerService.updateContainer(data?.containerId, client);
+        logger.info("Updated container");
+
+        checkAndPublishUpdates();
+      }
+    }
+  });
+
+  client.on("error", (error) => exitHandler(1, error));
 });
 
 const exitHandler = (exitCode: number, error?: any) => {
@@ -100,7 +138,6 @@ const exitHandler = (exitCode: number, error?: any) => {
   process.exit(exitCode);
 };
 
-client.on("error", (error) => exitHandler(1, error));
 process.on("SIGINT", () => exitHandler(0));
 process.on("SIGTERM", () => exitHandler(0));
 process.on("uncaughtException", (error) => exitHandler(1, error));
