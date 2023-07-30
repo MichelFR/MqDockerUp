@@ -18,7 +18,7 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
 
 // Check for new/old containers and publish updates
 const checkAndPublishUpdates = async (): Promise<void> => {
-  logger.info("Checking for new containers...");
+  logger.info("Checking for removed containers...");
   const containers = await DockerService.listContainers();
   const runningContainerIds = containers.map(container => container.Id);
 
@@ -55,7 +55,7 @@ const checkAndPublishUpdates = async (): Promise<void> => {
     });
   });
 
-  logger.info("Checking for old containers...");
+  logger.info("Checking for containers...");
   await HomeassistantService.publishConfigMessages(client);
 
   logger.info("Checking for image updates...");
