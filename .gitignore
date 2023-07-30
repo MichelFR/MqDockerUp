@@ -2,6 +2,10 @@
 logs
 *.log
 
+# Database
+*.sqlite
+*.db
+
 # Build directory
 dist
 
