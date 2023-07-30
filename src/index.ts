@@ -2,8 +2,11 @@ import * as mqtt from "mqtt";
 import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
+import DatabaseService from "./services/DatabaseService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
+const _ = require('lodash');
+
 require('source-map-support').install();
 
 const config = ConfigService.getConfig();
@@ -15,12 +18,48 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
   clientId: config.mqtt.clientId,
 });
 
+// Check for new/old containers and publish updates
 const checkAndPublishUpdates = async (): Promise<void> => {
-  logger.info("Checking for new/old containers...");
+  logger.info("Checking for removed containers...");
+  const containers = await DockerService.listContainers();
+  const runningContainerIds = containers.map(container => container.Id);
+
+  // Get all container IDs in the database
+  DatabaseService.getContainers((err: any, rows: any) => {
+    if (err) {
+      logger.error(err);
+      return;
+    }
+
+    // Iterate over each container in the database
+    rows.forEach((container: any) => {
+
+      // If the container is not in the running containers list, then it has stopped
+      if (!runningContainerIds.includes(container.id)) {
+        // Get the topics associated with this container
+        DatabaseService.getTopics(container.id, (err: any, topics: any) => {
+          if (err) {
+            logger.error(err);
+            return;
+          }
+
+          // Iterate over each topic and publish an empty message
+          topics.forEach((topic: any) => {
+            HomeassistantService.publishMessage(client, topic.topic, "", { retain: true, qos: 0 });
+          });
+
+          // Remove the container and its associated topics from the database
+          logger.info(`Removed missing container ${container.name} from Home Assistant and database.`);
+          DatabaseService.deleteContainer(container.id);
+        });
+      }
+    });
+  });
+
+  logger.info("Checking for containers...");
   await HomeassistantService.publishConfigMessages(client);
 
   logger.info("Checking for image updates...");
-
   await HomeassistantService.publishAvailability(client, true);
   await HomeassistantService.publishMessages(client);
 
@@ -34,53 +73,59 @@ const startInterval = async () => {
   intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
 };
 
-client.on("connect", async () => {
-  logger.info("Connected to MQTT broker");
+// Connected to MQTT broker
+client.on('connect', async function () {
+  logger.info('MQTT client successfully connected');
+
   await HomeassistantService.publishAvailability(client, true);
   await checkAndPublishUpdates();
   startInterval();
 
   client.subscribe(`${config.mqtt.topic}/update`);
-  client.subscribe('homeassistant/+/+/+/config', { qos: 0 });
 });
 
+client.on('error', function (err) {
+  logger.error('MQTT client connection error: ', err);
+});
+
+// Update-Handler for the /update message from MQTT
 client.on("message", async (topic: string, message: any) => {
-  let data;
-  try {
-    data = JSON.parse(message);
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-    } else {
-      logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-    }
-    return;
-  }
-
-  // Missing Docker Container-Handler, removes the /config message from MQTT when the container is missing
-  // This removes the entity from Home Assistant if the container is not existing anymore
-  if (data?.device?.manufacturer === "MqDockerUp" && topic?.endsWith("/config")) {
-    const image = data?.device?.model;
-    await DockerService.checkIfContainerExists(image).then((containerExists) => {
-      if (!containerExists && topic) {
-        HomeassistantService.publishMessage(client, topic, "", { retain: true, qos: 0 });
-        logger.info(`Removed missing container ${image} from Home Assistant`);
+  if (topic = "mqdockerup/update") {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
       }
-    });
-  }
+      return;
+    }
 
+    // Update-Handler for the /update message from MQTT
+    // This is triggered by the Home Assistant button in the UI to update a container
+    if (data?.containerId) {
+      const image = data?.image;
+      logger.info(`Got update message for ${image}`);
+      await DockerService.updateContainer(data?.containerId, client);
+      logger.info("Updated container");
 
-  // Update-Handler for the /update message from MQTT
-  // This is triggered by the Home Assistant button in the UI to update a container
-  if ((topic = "mqdockerup/update" && data?.containerId)) {
-    const image = data?.image;
-    logger.info(`Got update message for ${image}`);
-    await DockerService.updateContainer(data?.containerId, client);
-    logger.info("Updated container");
-
-    checkAndPublishUpdates();
+      checkAndPublishUpdates();
+    }
   }
 });
+
+// Docker event handlers
+// TODO: Do this in a more elegant way
+const containerEventHandler = _.debounce((eventName: string, data: {containerName: string, containerId: string}) => {
+  console.log(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
+}, 300);
+
+DockerService.events.on('create', (data) => containerEventHandler('created', data));
+DockerService.events.on('start', (data) => containerEventHandler('started', data));
+DockerService.events.on('die', (data) => containerEventHandler('died', data));
+
 
 const exitHandler = (exitCode: number, error?: any) => {
   HomeassistantService.publishAvailability(client, false);

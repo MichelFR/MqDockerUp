@@ -1,5 +1,6 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
+import { EventEmitter } from 'events';
 import logger from "../services/LoggerService";
 import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
 
@@ -8,6 +9,44 @@ import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAd
  */
 export default class DockerService {
   public static docker = new Docker();
+  public static events = new EventEmitter();
+
+  // Start listening to Docker events
+  public static listenToDockerEvents() {
+    DockerService.docker.getEvents({}, (err: any, data: any) => {
+      if (err) {
+        logger.error('Error while listening to docker events:', err);
+        return;
+      }
+
+      data.on('data', (chunk: any) => {
+        const event = JSON.parse(chunk.toString());
+
+        // Listen for create, update, and delete events on containers
+        if (event.Type === 'container') {
+          const containerName = event.Actor.Attributes.name;
+          const containerId = event.Actor.ID;
+
+          // Emit event when create, update or die action is detected
+          switch (event.Action) {
+            case 'create':
+            case 'start':
+            case 'die':
+              logger.debug(`${event.Action}: ${containerName}`);
+              DockerService.events.emit(event.Action, { containerName, containerId });
+              break;
+            default:
+              logger.debug(`${event.Action}: ${containerName}`);
+              break;
+          }
+        }
+      });
+
+      data.on('error', (error: any) => {
+        logger.error('Error while listening to docker events:', err);
+      });
+    });
+  }
 
   /**
    * Returns a list of inspect information for all containers.
@@ -44,7 +83,7 @@ export default class DockerService {
    * @param oldDigest - The old digest of the Docker image.
    * @returns A promise that resolves to a string containing the new digest.
    */
-  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string): Promise<string|null> {
+  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string): Promise<string | null> {
     try {
       let adapter = ImageRegistryAdapterFactory.getAdapter(imageName, tag);
       adapter['oldDigest'] = oldDigest;
@@ -252,7 +291,7 @@ export default class DockerService {
    * @returns A promise that resolves to true if the container exists.
    * TODO: Change to check if container is running by using the container id instead of the image name
    */
-  public static checkIfContainerExists(containerImage: string): Promise<boolean> {
+  public static async checkIfContainerExists(containerImage: string): Promise<boolean> {
     return DockerService.docker.listContainers().then((containers) => {
       const imageWithoutTag = containerImage.replace(/:.*/, "");
       const imageWithAnyTag = new RegExp(`^${imageWithoutTag}(:.*)?$`);
@@ -261,3 +300,6 @@ export default class DockerService {
     });
   }
 }
+
+// Start listening to Docker events
+DockerService.listenToDockerEvents();
