@@ -8,7 +8,7 @@ import logger from "./services/LoggerService"
 require('source-map-support').install();
 
 const config = ConfigService.getConfig();
-const client = mqtt.connectAsync(config.mqtt.connectionUri, {
+const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
   password: config.mqtt.password,
   protocolVersion: config.mqtt.protocolVersion,
@@ -72,52 +72,47 @@ const startInterval = async () => {
   intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
 };
 
-client.then(async (client) => {
-  // Connected to MQTT broker
-  client.on('connect', async function () {
-    logger.info('MQTT client successfully connected');
+// Connected to MQTT broker
+client.on('connect', async function () {
+  logger.info('MQTT client successfully connected');
 
-    await HomeassistantService.publishAvailability(client, true);
-    await checkAndPublishUpdates();
-    startInterval();
+  await HomeassistantService.publishAvailability(client, true);
+  await checkAndPublishUpdates();
+  startInterval();
 
-    client.subscribeAsync(`${config.mqtt.topic}/update`);
-  });
+  client.subscribe(`${config.mqtt.topic}/update`);
+});
 
-  client.on('error', async function (err) {
-    logger.error('MQTT client connection error: ', err);
-    exitHandler(1, err)
-  });
+client.on('error', function (err) {
+  logger.error('MQTT client connection error: ', err);
+});
 
-  // Update-Handler for the /update message from MQTT
-  client.on("message", async (topic: string, message: any) => {
-    if (topic = "mqdockerup/update") {
-      let data;
-      try {
-        data = JSON.parse(message);
-      } catch (error) {
-        if (error instanceof Error) {
-          logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-        } else {
-          logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-        }
-        return;
+// Update-Handler for the /update message from MQTT
+client.on("message", async (topic: string, message: any) => {
+  if (topic = "mqdockerup/update") {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
       }
-
-      // Update-Handler for the /update message from MQTT
-      // This is triggered by the Home Assistant button in the UI to update a container
-      if (data?.containerId) {
-        const image = data?.image;
-        logger.info(`Got update message for ${image}`);
-        await DockerService.updateContainer(data?.containerId, client);
-        logger.info("Updated container");
-
-        checkAndPublishUpdates();
-      }
+      return;
     }
-  });
 
-  client.on("error", (error) => exitHandler(1, error));
+    // Update-Handler for the /update message from MQTT
+    // This is triggered by the Home Assistant button in the UI to update a container
+    if (data?.containerId) {
+      const image = data?.image;
+      logger.info(`Got update message for ${image}`);
+      await DockerService.updateContainer(data?.containerId, client);
+      logger.info("Updated container");
+
+      checkAndPublishUpdates();
+    }
+  }
 });
 
 const exitHandler = (exitCode: number, error?: any) => {
@@ -138,6 +133,7 @@ const exitHandler = (exitCode: number, error?: any) => {
   process.exit(exitCode);
 };
 
+client.on("error", (error) => exitHandler(1, error));
 process.on("SIGINT", () => exitHandler(0));
 process.on("SIGTERM", () => exitHandler(0));
 process.on("uncaughtException", (error) => exitHandler(1, error));
