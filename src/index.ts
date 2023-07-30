@@ -32,6 +32,7 @@ const checkAndPublishUpdates = async (): Promise<void> => {
     // Iterate over each container in the database
     rows.forEach((row: any) => {
       const containerId = row.id;
+      const containerName = row.name;
 
       // If the container is not in the running containers list, then it has stopped
       if (!runningContainerIds.includes(containerId)) {
@@ -48,8 +49,8 @@ const checkAndPublishUpdates = async (): Promise<void> => {
           });
 
           // Remove the container and its associated topics from the database
+          logger.info(`Removed missing container ${containerName} from Home Assistant and database.`);
           DatabaseService.deleteContainer(containerId);
-          logger.info(`Removed missing container ${row.name} from Home Assistant and database.`);
         });
       }
     });
