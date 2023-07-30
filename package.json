@@ -1,6 +1,10 @@
 {
   "name": "mqdockerup",
+<<<<<<< Updated upstream
   "version": "1.1.1",
+=======
+  "version": "1.2.1",
+>>>>>>> Stashed changes
   "description": "A Node.js application that pushes information about running Docker containers to an MQTT server.",
   "main": "index.js",
   "scripts": {
