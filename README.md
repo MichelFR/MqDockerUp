@@ -23,13 +23,15 @@ MqDockerUp uses Docker APIs to get information about containers and images. It t
 
 ```bash
 docker run -d \
-  --name MqDockerUp \
   --restart always \
-  -e MAIN_INTERVAL=5m \
-  -e MQTT_CONNECTIONURI=mqtt://127.0.0.1:1883 \
-  -e MQTT_USERNAME=ha \
-  -e MQTT_PASSWORD=12345678 \
+  --name mqdockerup \
+  -e MAIN_INTERVAL="5m" \
+  -e MQTT_CONNECTIONURI="mqtt://127.0.0.1:1883" \
+  -e MQTT_USERNAME="ha" \
+  -e MQTT_PASSWORD="12345678" \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v your/path/data:/app/data/ \
+  -v your/path/config.yaml:/app/config.yaml \
   micrib/mqdockerup:latest
 ```
 
@@ -48,8 +50,10 @@ services:
       MQTT_USERNAME: "ha"
       MQTT_PASSWORD: "12345678"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    container_name: MqDockerUp
+      - /var/run/docker.sock:/var/run/docker.sock # This is required to access the docker API	
+      - your/path/data:/app/data/ # This is required to store the data (database.db)
+      - your/path/config.yaml:/app/config.yaml # This is required to store the configuration file
+    container_name: mqdockerup
 ```
 
 ## Configuration
