@@ -151,7 +151,7 @@ export default class HomeassistantService {
 
     return {
       object_id: `${image} ${name}`,
-      name: `${deviceName} ${name}`,
+      name: `${name}`,
       unique_id: `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
       device_class: deviceClass,
@@ -187,7 +187,7 @@ export default class HomeassistantService {
 
     return {
       object_id: `${image} ${name}`,
-      name: `${deviceName} ${name}`,
+      name: `${name}`,
       unique_id: `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
       device_class: "firmware",
