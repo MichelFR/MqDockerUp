@@ -31,6 +31,7 @@ export default class HomeassistantService {
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
       const tag = container.Config.Image.split(":")[1] || "latest";
+      const formatedTag = tag.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "-");
       const containerName = `${container.Name.substring(1)}`;
       let containerIsInDb = false;
 
@@ -45,7 +46,7 @@ export default class HomeassistantService {
       }
 
       let topic, payload;
-      const topicName = `${formatedImage}_${tag}`;
+      const topicName = `${formatedImage}_${formatedTag}`;
 
       // Container Id
       topic = `homeassistant/sensor/${topicName}/docker_id/config`;
