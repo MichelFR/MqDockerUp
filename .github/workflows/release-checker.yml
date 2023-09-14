@@ -17,13 +17,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Version Number
       id: version
-      run: echo "::set-output name=version::$(cat package.json | jq -r .version)"
+      run: echo "name=version::$(cat package.json | jq -r .version)" >> $GITHUB_OUTPUT
     - name: Create Release
       if: steps.compare.outputs.changed == 'true'
-      uses: actions/create-release@v1
+      uses: elgohr/Github-Release-Action@v4
       env:
         GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
       with:
