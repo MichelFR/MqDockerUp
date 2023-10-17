@@ -2,6 +2,8 @@
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png">
 
+![DALL·E 2023-10-17 21 46 04 - Vector concept featuring the MQTT and Docker logos as puzzle pieces fitting together  Lines or arrows indicate the flow of data and updates between th](https://github.com/MichelFR/MqDockerUp/assets/7061122/e0d28e1c-5478-4b99-a885-1f7298876956)
+
 
 # MqDockerUp
 
