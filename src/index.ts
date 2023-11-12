@@ -122,9 +122,20 @@ const containerEventHandler = _.debounce((eventName: string, data: {containerNam
   console.log(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
-DockerService.events.on('create', (data) => containerEventHandler('created', data));
-DockerService.events.on('start', (data) => containerEventHandler('started', data));
-DockerService.events.on('die', (data) => containerEventHandler('died', data));
+DockerService.events.on('create', (data) => {
+  containerEventHandler('created', data);
+  checkAndPublishUpdates();
+});
+
+DockerService.events.on('start', (data) => {
+  containerEventHandler('started', data);
+  checkAndPublishUpdates();
+});
+
+DockerService.events.on('die', (data) => {
+  containerEventHandler('died', data);
+  checkAndPublishUpdates();
+});
 
 
 const exitHandler = (exitCode: number, error?: any) => {
