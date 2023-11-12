@@ -101,6 +101,12 @@ export default class HomeassistantService {
       payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", containerName, container.Id);
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Docker Update-Button
+      topic = `homeassistant/button/${topicName}/force_update/config`;
+      payload = this.createUpdateButtonPayload(container.Id, containerName, image, tag);
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
     }
   }
 
@@ -212,6 +218,34 @@ export default class HomeassistantService {
       command_topic: `${config.mqtt.topic}/update`,
     };
   }
+
+  public static createUpdateButtonPayload(
+  containerId: string,
+  deviceName: string,
+  image: string,
+  tag: string
+): object {
+  // Format values to conform with Home Assistant naming rules
+  const safeContainerId = containerId.replace(/[^a-zA-Z0-9_]/g, "_");
+  const safeImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+  const safeTag = tag.replace(/[^a-zA-Z0-9_]/g, "_");
+
+  // Define the discovery payload for the button
+  return {
+    name: `${deviceName} Update Button`,
+    unique_id: `force_update_button_${safeImage}_${safeTag}`,
+    command_topic: `${config.mqtt.topic}/${safeImage}/${safeTag}/update_command`,
+    payload_press: "force_update",
+    device: {
+      manufacturer: "MqDockerUp",
+      model: `${image}:${tag}`,
+      name: deviceName,
+      sw_version: packageJson.version,
+      identifiers: [safeContainerId],
+    },
+    icon: "mdi:update",
+  };
+}
 
   /**
    * Publish update messages to MQTT
