@@ -188,17 +188,17 @@ export default class DockerService {
           logger.info(`Status: ${event.status}`);
           // check if progressDetail exists
           if (event.progressDetail) {
-            const current = event.progressDetail.current || 0;
-            const total = event.progressDetail.total || 0;
+            // const current = event.progressDetail.current || 0;
+            // const total = event.progressDetail.total || 0;
 
-            // update total progress and size
-            totalProgress += current;
-            totalSize += total;
+            //  total progress and size
+            // totalProgress += current;
+            // totalSize += total;
 
-            const percentage = Math.round((totalProgress / totalSize) * 100);
+            // const percentage = Math.round((totalProgress / totalSize) * 100);
 
             // print percentage
-            logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
+            // logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
             // Send Progress to MQTT
             // TODO: Needs to be fixed
