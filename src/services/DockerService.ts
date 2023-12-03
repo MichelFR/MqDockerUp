@@ -135,6 +135,7 @@ export default class DockerService {
   public static async updateContainer(containerId: string, client: any) {
     const container = DockerService.docker.getContainer(containerId);
     const info = await container.inspect();
+    const oldImageId = info.Image;
     const image = info.Config.Image;
     const imageName = image.split(":")[0];
 
@@ -182,6 +183,14 @@ export default class DockerService {
           const newContainer = await DockerService.docker.createContainer(containerConfig);
           await newContainer.start();
 
+          DockerService.docker.getImage(oldImageId).remove({ force: true }, (err, data) => {
+              if (err) {
+                logger.error("Error removing old image: " + err);
+              } else {
+                logger.info("Old image removed successfully");
+              }
+          });
+          
           return newContainer;
         },
         function (event) {
