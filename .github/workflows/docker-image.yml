@@ -34,7 +34,7 @@ jobs:
         images: micrib/mqdockerup
 
     - name: Build and push Docker image for amd64
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v5
       with:
         context: .
         push: true
