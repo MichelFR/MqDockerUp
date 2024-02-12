@@ -1,0 +1,46 @@
+version: "3.9"
+services:
+  mqdockerup:
+    container_name: mqdockerup
+    build: ./
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./mqdockerup/data:/app/data
+    environment:
+      - MAIN_INTERVAL=5m
+      - MQTT_CONNECTIONURI=mqtt://emqx:1883
+      - ACCESSTOKENS_GITHUB=
+    depends_on:
+      - emqx
+    networks:
+      - custom_network
+
+  emqx:
+    container_name: emqx
+    image: emqx/emqx:latest
+    ports:
+      - "1883:1883"
+      - "18083:18083"
+    volumes:
+      - ./emqx/data:/opt/emqx/data
+      - ./emqx/etc:/opt/emqx/etc
+      - ./emqx/log:/opt/emqx/log
+    networks:
+      - custom_network
+
+  hello-world:
+    container_name: hello-world
+    image: "hello-world"
+    networks:
+      - custom_network
+
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./config:/config
+    privileged: true
+    network_mode: host
+
+networks:
+  custom_network:
