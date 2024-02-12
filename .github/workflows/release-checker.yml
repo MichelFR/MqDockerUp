@@ -22,10 +22,11 @@ jobs:
 
       - name: Check if version changed
         run: |
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_ENV
           else
             echo "exists=false" >> $GITHUB_ENV
+          fi
 
       - name: Create Release
         if: env.exists == 'false'
