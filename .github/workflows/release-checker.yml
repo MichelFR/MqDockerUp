@@ -15,14 +15,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Get Version Number
-        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_ENV
+        run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
 
       - name: Fetch tags
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
 
       - name: Check if version changed
         run: |
-          if git rev-parse "v${{ env.version }}" >/dev/null 2>&1; then
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_ENV
           else
             echo "exists=false" >> $GITHUB_ENV
