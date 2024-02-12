@@ -19,33 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Get the current version from package.json
       - name: Get Version Number
-        id: version
-        run: echo "::set-output name=version::$(jq -r .version package.json)"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_ENV
 
-      # Fetch tags from the remote to check if the current version was already tagged
       - name: Fetch tags
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
 
-      # Check if current version tag exists
       - name: Check if version changed
-        id: check_version
         run: |
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "::set-output name=exists::true"
+          if git rev-parse "v${{ env.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_ENV
           else
-            echo "::set-output name=exists::false"
-          fi
+            echo "exists=false" >> $GITHUB_ENV
 
-      # Create a release if the version has changed
       - name: Create Release
-        if: steps.check_version.outputs.exists == 'false'
-        uses: elgohr/Github-Release-Action@v5
+        if: env.exists == 'false'
+        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          release_name: Release ${{ steps.version.outputs.version }}
-          draft: false
-          prerelease: false
+          tag_name: v${{ env.version
