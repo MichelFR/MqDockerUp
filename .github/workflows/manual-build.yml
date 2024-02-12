@@ -36,11 +36,9 @@ jobs:
           VERSION=$(npm version ${{ github.event.inputs.versionType }})
           echo "new_version=$VERSION" >> $GITHUB_ENV
 
-      - name: Create new branch for version bump
+      - name: Set VERSION_BUMP_BRANCH
         run: |
           VERSION_BUMP_BRANCH="version-bump-${{ github.event.inputs.versionType }}-$(date +%s)"
-          git checkout -b $VERSION_BUMP_BRANCH
-          git push origin $VERSION_BUMP_BRANCH
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
