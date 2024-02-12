@@ -31,20 +31,11 @@ jobs:
 
       - name: Bump version and create tag
         run: |
-          VERSION=$(npm version ${{ github.event.inputs.versionType }})
-          echo "new_version=$VERSION" >> $GITHUB_ENV
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "chore(release): $VERSION" -a
-            git tag $VERSION
-          else
-            echo "No changes to commit."
-          fi
-        shell: /usr/bin/bash -e {0}
+          VERSION=$(npm version ${{ github.event.inputs.versionType }})
+          echo "new_version=$VERSION" >> $GITHUB_ENV
 
       - name: Push changes and tags
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tags: true
+        run: |
+          git push origin HEAD:main --tags
