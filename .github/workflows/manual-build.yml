@@ -29,15 +29,19 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Bump version
-        id: bump_version
+      - name: Bump version and create tag
         run: |
           VERSION=$(npm version ${{ github.event.inputs.versionType }})
-          echo "::set-output name=new_version::$VERSION"
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git commit -m "chore(release): $VERSION" -a
-          git tag $VERSION
+          echo "new_version=$VERSION" >> $GITHUB_ENV
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "chore(release): $VERSION" -a
+            git tag $VERSION
+          else
+            echo "No changes to commit."
+          fi
+        shell: /usr/bin/bash -e {0}
 
       - name: Push changes and tags
         uses: ad-m/github-push-action@master
