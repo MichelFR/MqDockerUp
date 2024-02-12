@@ -1,0 +1,41 @@
+name: Manual Version Bump and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionType:
+        description: 'Version type (major, minor, patch)'
+        required: true
+        default: 'patch'
+
+jobs:
+  bump-version-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          VERSION=$(npm version ${{ github.event.inputs.versionType }})
+          echo "::set-output name=new_version::$VERSION"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -m "chore(release): $VERSION" -a
+          git tag $VERSION
+
+      - name: Push changes and tags
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tags: true
