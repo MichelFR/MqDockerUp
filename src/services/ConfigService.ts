@@ -15,6 +15,7 @@ export default class ConfigService {
       const defaults = {
         main: {
           interval: "5m",
+          prefix: "",
         },
         mqtt: {
           connectionUri: "mqtt://localhost:1883",

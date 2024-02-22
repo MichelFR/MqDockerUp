@@ -28,6 +28,7 @@ export default class HomeassistantService {
     const containers = await DockerService.listContainers();
 
     for (const container of containers) {
+      const prefix = ConfigService.getConfig()?.main.prefix || "";
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
       const tag = container.Config.Image.split(":")[1] || "latest";
@@ -46,59 +47,75 @@ export default class HomeassistantService {
       }
 
       let topic, payload;
-      const topicName = `${formatedImage}_${formatedTag}`;
+
+      let topicName: string = '';
+      let deviceName = containerName;
+
+      if (!prefix) {
+        topicName = `${formatedImage}_${formatedTag}`;
+      } else {
+        topicName = `${prefix}_${formatedImage}_${formatedTag}`;
+      }
+
+      if (!prefix) {
+        deviceName = containerName;
+      } else {
+        deviceName = `${prefix}_${containerName}`;
+      }
+
+
 
       // Container Id
       topic = `homeassistant/sensor/${topicName}/docker_id/config`;
-      payload = this.createPayload("Container ID", image, tag, "dockerId", containerName, null, "mdi:key-variant");
+      payload = this.createPayload("Container ID", image, tag, "dockerId", deviceName, null, "mdi:key-variant");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Name
       topic = `homeassistant/sensor/${topicName}/docker_name/config`;
-      payload = this.createPayload("Container Name", image, tag, "dockerName", containerName, null, "mdi:label");
+      payload = this.createPayload("Container Name", image, tag, "dockerName", deviceName, null, "mdi:label");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Status
       topic = `homeassistant/sensor/${topicName}/docker_status/config`;
-      payload = this.createPayload("Container Status", image, tag, "dockerStatus", containerName, null, "mdi:checkbox-marked-circle");
+      payload = this.createPayload("Container Status", image, tag, "dockerStatus", deviceName, null, "mdi:checkbox-marked-circle");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Uptime
       topic = `homeassistant/sensor/${topicName}/docker_uptime/config`;
-      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", containerName, "timestamp", "mdi:timer-sand");
+      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", deviceName, "timestamp", "mdi:timer-sand");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Ports
       topic = `homeassistant/sensor/${topicName}/docker_ports/config`;
-      payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", containerName, null, "mdi:lan-connect");
+      payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", deviceName, null, "mdi:lan-connect");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Image
       topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
-      payload = this.createPayload("Docker Image", image, tag, "dockerImage", containerName, null, "mdi:image");
+      payload = this.createPayload("Docker Image", image, tag, "dockerImage", deviceName, null, "mdi:image");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Tag
       topic = `homeassistant/sensor/${topicName}/docker_tag/config`;
-      payload = this.createPayload("Docker Tag", image, tag, "dockerTag", containerName, null, "mdi:tag");
+      payload = this.createPayload("Docker Tag", image, tag, "dockerTag", deviceName, null, "mdi:tag");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Registry
       topic = `homeassistant/sensor/${topicName}/docker_registry/config`;
-      payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", containerName, null, "mdi:database");
+      payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", deviceName, null, "mdi:database");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Update
       topic = `homeassistant/update/${topicName}/docker_update/config`;
-      payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", containerName, container.Id);
+      payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", deviceName, container.Id);
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
     }
@@ -146,14 +163,15 @@ export default class HomeassistantService {
     valueName: string,
     deviceName: string,
     deviceClass?: string | null,
-    icon: string = "mdi:docker"
+    icon: string = "mdi:docker",
+    prefix: string = ""
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: `${image} ${name}`,
+      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       name: `${name}`,
-      unique_id: `${image} ${name}`,
+      unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
       device_class: deviceClass,
       value_template: `{{ value_json.${valueName} }}`,
@@ -182,14 +200,15 @@ export default class HomeassistantService {
     tag: string,
     valueName: string,
     deviceName: string,
-    containerId: any
+    containerId: any,
+    prefix: string = ""
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: `${image} ${name}`,
+      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       name: `${name}`,
-      unique_id: `${image} ${name}`,
+      unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
       device_class: "firmware",
       availability: [
