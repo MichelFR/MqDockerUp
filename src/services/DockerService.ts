@@ -54,7 +54,7 @@ export default class DockerService {
    * @returns A promise that resolves to an array of `ContainerInspectInfo`.
    */
   public static async listContainers(): Promise<ContainerInspectInfo[]> {
-    const containers = await DockerService.docker.listContainers();
+    const containers = await DockerService.docker.listContainers({ all: true });
 
     return Promise.all(
       containers.map(async (container) => {
@@ -301,7 +301,7 @@ export default class DockerService {
    * TODO: Change to check if container is running by using the container id instead of the image name
    */
   public static async checkIfContainerExists(containerImage: string): Promise<boolean> {
-    return DockerService.docker.listContainers().then((containers) => {
+    return DockerService.docker.listContainers({ all: true }).then((containers) => {
       const imageWithoutTag = containerImage.replace(/:.*/, "");
       const imageWithAnyTag = new RegExp(`^${imageWithoutTag}(:.*)?$`);
 
