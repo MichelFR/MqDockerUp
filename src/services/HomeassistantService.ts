@@ -227,6 +227,7 @@ export default class HomeassistantService {
         identifiers: [`${image}_${tag}`],
       },
       icon: "mdi:arrow-up-bold-circle",
+      entity_picture: "https://raw.githubusercontent.com/MichelFR/MqDockerUp/main/assets/logo.png",
       payload_install: JSON.stringify({ containerId: containerId, image: image }),
       command_topic: `${config.mqtt.topic}/update`,
     };
