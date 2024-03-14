@@ -31,7 +31,7 @@
     "yaml": "^2.4.1"
   },
   "devDependencies": {
-    "@types/dockerode": "^3.3.24",
+    "@types/dockerode": "^3.3.26",
     "@types/figlet": "^1.5.8",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.0",
