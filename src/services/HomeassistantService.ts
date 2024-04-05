@@ -96,7 +96,7 @@ export default class HomeassistantService {
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Image
-      topic = `homeassistant/sensor/${formatedImage}_${tag}/docker_image/config`;
+      topic = `homeassistant/sensor/${topicName}/docker_image/config`;
       payload = this.createPayload("Docker Image", image, tag, "dockerImage", deviceName, null, "mdi:image");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
