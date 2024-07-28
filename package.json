@@ -27,7 +27,7 @@
     "mqtt": "^5.8.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "winston": "^3.13.0",
+    "winston": "^3.13.1",
     "yaml": "^2.4.5"
   },
   "devDependencies": {
