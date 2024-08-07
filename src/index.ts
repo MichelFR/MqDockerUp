@@ -90,7 +90,7 @@ client.on('error', function (err) {
 
 // Update-Handler for the /update message from MQTT
 client.on("message", async (topic: string, message: any) => {
-  if (topic = "mqdockerup/update") {
+  if (topic == "mqdockerup/update") {
     let data;
     try {
       data = JSON.parse(message);
@@ -108,10 +108,48 @@ client.on("message", async (topic: string, message: any) => {
     if (data?.containerId) {
       const image = data?.image;
       logger.info(`Got update message for ${image}`);
-      await DockerService.updateContainer(data?.containerId, client);
+      await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
+      await checkAndPublishUpdates();
+    }
+  } else if (topic == "mqdockerup/restart") {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
 
-      checkAndPublishUpdates();
+    if (data?.containerId) {
+      logger.info(`Got restart message for ${data?.containerId}`);
+      await DockerService.restartContainer(data?.containerId);
+      logger.info("Restarted container");
+    }
+
+    await checkAndPublishUpdates();
+  } else if (topic == "mqdockerup/manualUpdate") {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got manual update message for ${data?.containerId}`);
+      await DockerService.updateContainer(data?.containerId);
+      logger.info("Updated container");
+      await checkAndPublishUpdates();
     }
   }
 });
