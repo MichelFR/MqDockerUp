@@ -132,7 +132,7 @@ export default class DockerService {
    * @param containerId - The ID of the Docker container to update.
    * @returns A promise that resolves to the new Docker container.
    */
-  public static async updateContainer(containerId: string, client: any) {
+  public static async updateContainer(containerId: string) {
     const container = DockerService.docker.getContainer(containerId);
     const info = await container.inspect();
     const oldImageId = info.Image;

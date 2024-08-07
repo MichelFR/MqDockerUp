@@ -95,6 +95,54 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
+      // Container manual update
+      topic = `homeassistant/button/${topicName}/docker_manual_update/config`;
+      payload = {
+        name: "Manual Update",
+        unique_id: `${image}_${tag}_manual_update`,
+        command_topic: `${config.mqtt.topic}/mqdockerup/manualUpdate`,
+        command_template: JSON.stringify({ containerId: container.Id }),
+        availability: {
+          topic: `${config.mqtt.topic}/availability`,
+        },
+        payload_on: "update",
+        device: {
+          manufacturer: "MqDockerUp",
+          model: `${image}:${tag}`,
+          name: deviceName,
+          sw_version: packageJson.version,
+          sa: "Docker",
+          identifiers: [`${image}_${tag}`],
+        },
+        icon: "mdi:arrow-up-bold-circle",
+      };
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container manual restart
+      topic = `homeassistant/button/${topicName}/docker_manual_restart/config`;
+      payload = {
+        name: "Manual Restart",
+        unique_id: `${image}_${tag}_manual_restart`,
+        command_topic: `${config.mqtt.topic}/${formatedImage}/restart`,
+        command_template: JSON.stringify({ containerId: container.Id }),
+        availability: {
+          topic: `${config.mqtt.topic}/availability`,
+        },
+        payload_on: "restart",
+        device: {
+          manufacturer: "MqDockerUp",
+          model: `${image}:${tag}`,
+          name: deviceName,
+          sw_version: packageJson.version,
+          sa: "Docker",
+          identifiers: [`${image}_${tag}`],
+        },
+        icon: "mdi:restart",
+      };
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
       // Docker Image
       topic = `homeassistant/sensor/${topicName}/docker_image/config`;
       payload = this.createPayload("Docker Image", image, tag, "dockerImage", deviceName, null, "mdi:image");
@@ -369,14 +417,4 @@ export default class HomeassistantService {
     };
     this.publishMessage(client, topic, payload, { retain: true });
   }
-}
-
-interface Payload {
-  name: string;
-  image: string;
-  tag: string;
-  valueName: string;
-  deviceName: string;
-  deviceClass?: string | null;
-  icon?: string;
 }
