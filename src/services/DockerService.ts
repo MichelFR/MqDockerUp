@@ -96,6 +96,7 @@ export default class DockerService {
       }
 
     } catch (error: any) {
+      logger.error(imageName, tag, oldDigest);
       logger.error(error);
       return null;
     }
