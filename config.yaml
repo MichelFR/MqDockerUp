@@ -5,6 +5,7 @@ main:
   # m (minutes), h (hours), d (days), w (weeks).
   interval: "5m"
   prefix: ""
+  statsInterval: "5s"
 
 # MQTT configuration
 mqtt:

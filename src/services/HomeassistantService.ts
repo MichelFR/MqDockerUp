@@ -2,6 +2,7 @@ import DockerService from "../services/DockerService";
 import ConfigService from "../services/ConfigService";
 import DatabaseService from "../services/DatabaseService";
 import logger from "../services/LoggerService"
+import Docker from "dockerode";
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
@@ -95,6 +96,42 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
+      // Memory usage
+      topic = `homeassistant/sensor/${topicName}/memory_usage/config`;
+      payload = this.createStatsPayload("Memory usage", image, tag, "memoryUsage", deviceName, "data_size", "mdi:memory", "", "B");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // CPU usage
+      topic = `homeassistant/sensor/${topicName}/cpu_usage/config`;
+      payload = this.createStatsPayload("CPU usage", image, tag, "cpuUsage", deviceName, null, "mdi:chip", "", "%");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Network RX
+      topic = `homeassistant/sensor/${topicName}/network_rx/config`;
+      payload = this.createStatsPayload("Network RX", image, tag, "rxBytes", deviceName, "data_size", "mdi:download", "", "B");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Network TX
+      topic = `homeassistant/sensor/${topicName}/network_tx/config`;
+      payload = this.createStatsPayload("Network TX", image, tag, "txBytes", deviceName, "data_size", "mdi:upload", "", "B");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Storage read
+      topic = `homeassistant/sensor/${topicName}/disk_read/config`;
+      payload = this.createStatsPayload("Disk read", image, tag, "diskRead", deviceName, "data_size", "mdi:harddisk", "", "B");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Storage write
+      topic = `homeassistant/sensor/${topicName}/disk_write/config`;
+      payload = this.createStatsPayload("Disk write", image, tag, "diskWrite", deviceName, "data_size", "mdi:harddisk", "", "B");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+      
       // Container manual update
       topic = `homeassistant/button/${topicName}/docker_manual_update/config`;
       payload = {
@@ -182,6 +219,19 @@ export default class HomeassistantService {
 
       // Publish update message (for HA)
       await this.publishUpdateMessage(container, client);
+    }
+  }
+
+  /**
+   * Publishes the container stats to the MQTT broker
+   * @param client The MQTT client
+   */
+  public static async publishStats(client: any) {
+    const containers = await DockerService.listContainers();
+    for (const container of containers) {
+      // Publish stats message (for HA)
+      const containerStat = await DockerService.getStat(container.Id);
+      await this.publishStatisticsMessage(container, containerStat, client);
     }
   }
 
@@ -278,6 +328,46 @@ export default class HomeassistantService {
       entity_picture: "https://github.com/MichelFR/MqDockerUp/raw/main/assets/logo_200x200.png",
       payload_install: JSON.stringify({ containerId: containerId, image: image }),
       command_topic: `${config.mqtt.topic}/update`,
+    };
+  }
+
+  public static createStatsPayload(
+    name: string,
+    image: string,
+    tag: string,
+    valueName: string,
+    deviceName: string,
+    deviceClass?: string | null,
+    icon: string = "mdi:docker",
+    prefix: string = "",
+    unit_of_measurement?: string | null
+  ): object {
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+
+    return {
+      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      name: `${name}`,
+      unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      state_topic: `${config.mqtt.topic}/${formatedImage}/stats`,
+      device_class: deviceClass,
+      value_template: `{{ value_json.${valueName} }}`,
+      unit_of_measurement: `${unit_of_measurement}`,
+      availability:
+      {
+        topic: `${config.mqtt.topic}/availability`,
+      },
+
+      payload_available: "Online",
+      payload_not_available: "Offline",
+      device: {
+        manufacturer: "MqDockerUp",
+        model: `${image}:${tag}`,
+        name: deviceName,
+        sw_version: packageJson.version,
+        sa: "Docker",
+        identifiers: [`${image}_${tag}`],
+      },
+      icon: icon,
     };
   }
 
@@ -417,4 +507,129 @@ export default class HomeassistantService {
     };
     this.publishMessage(client, topic, payload, { retain: true });
   }
+
+   /**
+   * Publish statistics messages to MQTT
+   * @param container
+   * @param client
+   */
+   public static async publishStatisticsMessage(container: any, containerStats: Docker.ContainerStats, client: any) {
+    const prefix = ConfigService.getConfig()?.main.prefix || "";
+    const image = container.Config.Image.split(":")[0];
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+    const containerName = `${container.Name.substring(1)}`;
+    const tag = container.Config.Image.split(":")[1] || "latest";
+    const formatedTag = tag.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "-");
+
+    let topic, payload;
+
+    let topicName: string = '';
+    let deviceName = containerName;
+
+    if (!prefix) {
+      topicName = `${formatedImage}_${formatedTag}`;
+    } else {
+      topicName = `${prefix}_${formatedImage}_${formatedTag}`;
+    }
+
+    if (!prefix) {
+      deviceName = containerName;
+    } else {
+      deviceName = `${prefix}_${containerName}`;
+    }
+
+    let cachedMemory = 0;
+    let memoryUsage = 0.0;
+    let numProcs = 0;
+
+    if (containerStats?.memory_stats?.privateworkingset !== undefined) {
+      // Windows
+      memoryUsage = containerStats?.memory_stats?.privateworkingset;
+      cachedMemory = 0;
+      numProcs = containerStats.num_procs || 0;
+    }
+    else if (
+      // Linux
+      containerStats?.memory_stats?.stats === undefined ||
+      containerStats?.memory_stats?.usage === undefined
+    ) {
+      memoryUsage = 0;
+      cachedMemory = 0;
+    } else {
+      cachedMemory = 0;
+      if (containerStats?.memory_stats?.stats?.cache !== undefined) {
+        // cgroups v1
+        cachedMemory = containerStats.memory_stats.stats.cache;
+      }
+      memoryUsage = containerStats.memory_stats.usage - cachedMemory;
+    }
+    const previousCPUTotalUsage =
+    containerStats?.precpu_stats?.cpu_usage?.total_usage || 0;
+    const previousCPUSystemUsage = containerStats?.precpu_stats?.system_cpu_usage || 0;
+    const currentCPUTotalUsage = containerStats?.cpu_stats?.cpu_usage?.total_usage || 0;
+    const currentCPUSystemUsage = containerStats?.cpu_stats?.system_cpu_usage || 0;
+    let cpuCores =
+      containerStats?.cpu_stats?.cpu_usage?.percpu_usage?.length ??
+      containerStats?.cpu_stats?.online_cpus ??
+      1;
+    
+    const cpuDelta = currentCPUTotalUsage - previousCPUTotalUsage;
+    const cpuSystemDelta = currentCPUSystemUsage - previousCPUSystemUsage;
+    const cpuUsage = (cpuDelta / cpuSystemDelta) * cpuCores * 100.0;
+
+    let diskRead = 0;
+    let diskWrite = 0;
+    if (
+      containerStats.blkio_stats !== undefined &&
+      containerStats.blkio_stats.io_service_bytes_recursive !== null
+    ) {
+      // TODO: take care of multiple block devices
+      let readData = containerStats?.blkio_stats?.io_service_bytes_recursive?.find(
+        (d) => d.op === 'Read'
+      );
+      if (readData === undefined) {
+        // try the cgroups v2 version
+        readData = containerStats?.blkio_stats?.io_service_bytes_recursive?.find(
+          (d) => d.op === 'read'
+        );
+      }
+      if (readData !== undefined) {
+        diskRead= readData.value;
+      }
+      let writeData = containerStats?.blkio_stats?.io_service_bytes_recursive?.find(
+        (d) => d.op === 'Write'
+      );
+      if (writeData === undefined) {
+        // try the cgroups v2 version
+        writeData = containerStats?.blkio_stats?.io_service_bytes_recursive?.find(
+          (d) => d.op === 'write'
+        );
+      }
+      if (writeData !== undefined) {
+        diskWrite = writeData.value;
+      }
+    }
+
+    let rxBytes = 0;
+    let txBytes = 0;
+    let k: keyof typeof containerStats.networks;
+    for (k in containerStats.networks) {
+      // on windows this always seem to be 0
+      rxBytes  += containerStats.networks[k].rx_bytes;
+      txBytes  += containerStats.networks[k].tx_bytes;
+    }
+
+    topic = `${config.mqtt.topic}/${formatedImage}/stats`;
+    payload = {
+      memoryUsage: memoryUsage,
+      cpuUsage: cpuUsage,
+      rxBytes: rxBytes,
+      txBytes: txBytes,
+      diskRead: diskRead,
+      diskWrite: diskWrite,
+    };
+    this.publishMessage(client, topic, payload, { retain: true });
+  }
 }
+
+ 

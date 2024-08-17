@@ -8,7 +8,6 @@ import logger from "./services/LoggerService"
 const _ = require('lodash');
 
 require('source-map-support').install();
-
 const config = ConfigService.getConfig();
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
@@ -67,10 +66,18 @@ const checkAndPublishUpdates = async (): Promise<void> => {
   logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
 };
 
+
+// Check for new/old containers and publish updates
+const checkAndPublishStats = async (): Promise<void> => {
+  await HomeassistantService.publishStats(client);
+};
+
 let intervalId: NodeJS.Timeout;
+let intervalId2: NodeJS.Timeout;
 
 const startInterval = async () => {
   intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
+  intervalId2 = setInterval(checkAndPublishStats, TimeService.parseDuration(config.main.statsInterval));
 };
 
 // Connected to MQTT broker
