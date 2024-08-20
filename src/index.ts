@@ -82,6 +82,8 @@ client.on('connect', async function () {
   startInterval();
 
   client.subscribe(`${config.mqtt.topic}/update`);
+  client.subscribe(`${config.mqtt.topic}/restart`);
+  client.subscribe(`${config.mqtt.topic}/manualUpdate`);
 });
 
 client.on('error', function (err) {
@@ -90,7 +92,7 @@ client.on('error', function (err) {
 
 // Update-Handler for the /update message from MQTT
 client.on("message", async (topic: string, message: any) => {
-  if (topic == "mqdockerup/update") {
+  if (topic == `${config.mqtt.topic}/update`) {
     let data;
     try {
       data = JSON.parse(message);
@@ -112,7 +114,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Updated container");
       await checkAndPublishUpdates();
     }
-  } else if (topic == "mqdockerup/restart") {
+  } else if (topic == `${config.mqtt.topic}/restart`) {
     let data;
     try {
       data = JSON.parse(message);
@@ -132,7 +134,7 @@ client.on("message", async (topic: string, message: any) => {
     }
 
     await checkAndPublishUpdates();
-  } else if (topic == "mqdockerup/manualUpdate") {
+  } else if (topic == `${config.mqtt.topic}/manualUpdate`) {
     let data;
     try {
       data = JSON.parse(message);
