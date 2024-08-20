@@ -100,7 +100,7 @@ export default class HomeassistantService {
       payload = {
         name: "Manual Update",
         unique_id: `${image}_${tag}_manual_update`,
-        command_topic: `${config.mqtt.topic}/mqdockerup/manualUpdate`,
+        command_topic: `${config.mqtt.topic}/manualUpdate`,
         command_template: JSON.stringify({ containerId: container.Id }),
         availability: {
           topic: `${config.mqtt.topic}/availability`,
@@ -124,7 +124,7 @@ export default class HomeassistantService {
       payload = {
         name: "Manual Restart",
         unique_id: `${image}_${tag}_manual_restart`,
-        command_topic: `${config.mqtt.topic}/${formatedImage}/restart`,
+        command_topic: `${config.mqtt.topic}/restart`,
         command_template: JSON.stringify({ containerId: container.Id }),
         availability: {
           topic: `${config.mqtt.topic}/availability`,
