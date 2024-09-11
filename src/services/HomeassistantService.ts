@@ -131,13 +131,12 @@ export default class HomeassistantService {
       payload = this.createStatsPayload("Disk write", image, tag, "diskWrite", deviceName, "data_size", "mdi:harddisk", "", "B");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
-      
       // Container manual update
       topic = `homeassistant/button/${topicName}/docker_manual_update/config`;
       payload = {
         name: "Manual Update",
         unique_id: `${image}_${tag}_manual_update`,
-        command_topic: `${config.mqtt.topic}/mqdockerup/manualUpdate`,
+        command_topic: `${config.mqtt.topic}/manualUpdate`,
         command_template: JSON.stringify({ containerId: container.Id }),
         availability: {
           topic: `${config.mqtt.topic}/availability`,
@@ -161,7 +160,7 @@ export default class HomeassistantService {
       payload = {
         name: "Manual Restart",
         unique_id: `${image}_${tag}_manual_restart`,
-        command_topic: `${config.mqtt.topic}/${formatedImage}/restart`,
+        command_topic: `${config.mqtt.topic}/restart`,
         command_template: JSON.stringify({ containerId: container.Id }),
         availability: {
           topic: `${config.mqtt.topic}/availability`,
@@ -507,7 +506,7 @@ export default class HomeassistantService {
     };
     this.publishMessage(client, topic, payload, { retain: true });
   }
-
+  
    /**
    * Publish statistics messages to MQTT
    * @param container
@@ -631,5 +630,3 @@ export default class HomeassistantService {
     this.publishMessage(client, topic, payload, { retain: true });
   }
 }
-
- 
