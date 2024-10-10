@@ -64,6 +64,15 @@ export default class DockerService {
     );
   }
 
+  /**
+   * Returns the stats of the given container.
+   * 
+   * @param containerId - The ID of the Docker container.
+   * @returns A promise that resolves to an array of `ContainerStats`.
+   */
+  public static async getStat(containerId: string): Promise<Docker.ContainerStats> {
+    return await DockerService.docker.getContainer(containerId).stats( { stream: false });
+  }
 
   /**
    * Gets the Docker image registry for the specified image name.
