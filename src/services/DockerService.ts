@@ -134,89 +134,95 @@ export default class DockerService {
    * @returns A promise that resolves to the new Docker container.
    */
   public static async updateContainer(containerId: string) {
-    const container = DockerService.docker.getContainer(containerId);
-    const info = await container.inspect();
-    const oldImageId = info.Image;
-    const image = info.Config.Image;
-    const imageName = image.split(":")[0];
+    try {
+      const container = DockerService.docker.getContainer(containerId);
+      const info = await container.inspect();
+      const oldImageId = info.Image;
+      const image = info.Config.Image;
+      const imageName = image.split(":")[0];
 
-    // Catch the case if its trying to update MqDockerUp itself
-    if (imageName.toLowerCase() === "mqdockerup") {
-      console.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
-      return;
-    }
-
-    let totalProgress = 0;
-    let totalSize = 0;
-    let lastProgressEvent = { progressDetail: { current: 0, total: 0 } };
-
-    await DockerService.docker.pull(image, async (err: any, stream: any) => {
-      if (err) {
-        logger.error("Pulling Error: " + err);
+      // Catch the case if its trying to update MqDockerUp itself
+      if (imageName.toLowerCase() === "mqdockerup") {
+        console.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
         return;
       }
-      // use modem.followProgress to get progress events
-      DockerService.docker.modem.followProgress(
-        stream,
-        async (err: any, output: any) => {
-          if (err) {
-            logger.error("Stream Error: " + err);
-            return;
-          }
 
-          logger.info("Image pulled successfully");
-          const containerConfig: any = {
-            ...info,
-            ...info.Config,
-            ...info.HostConfig,
-            ...info.NetworkSettings,
-            name: info.Name,
-            Image: image,
-          };
+      let totalProgress = 0;
+      let totalSize = 0;
+      let lastProgressEvent = { progressDetail: { current: 0, total: 0 } };
 
-          const mounts = info.Mounts;
-          const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
-          containerConfig.HostConfig.Binds = binds;
-
-          await container.stop();
-          await container.remove();
-
-          const newContainer = await DockerService.docker.createContainer(containerConfig);
-          await newContainer.start();
-
-          DockerService.docker.getImage(oldImageId).remove({ force: true }, (err, data) => {
-              if (err) {
-                logger.error("Error removing old image: " + err);
-              } else {
-                logger.info("Old image removed successfully");
-              }
-          });
-          
-          return newContainer;
-        },
-        function (event) {
-          logger.info(`Status: ${event.status}`);
-          // check if progressDetail exists
-          if (event.progressDetail) {
-            // const current = event.progressDetail.current || 0;
-            // const total = event.progressDetail.total || 0;
-
-            //  total progress and size
-            // totalProgress += current;
-            // totalSize += total;
-
-            // const percentage = Math.round((totalProgress / totalSize) * 100);
-
-            // print percentage
-            // logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
-
-            // Send Progress to MQTT
-            // TODO: Needs to be fixed
-            // HomeassistantService.publishUpdateProgressMessage(info, client, percentage, totalSize - totalProgress, event.status, false);
-          }
+      await DockerService.docker.pull(image, async (err: any, stream: any) => {
+        if (err) {
+          logger.error("Pulling Error: " + err);
+          return;
         }
-      );
-    });
+        // use modem.followProgress to get progress events
+        DockerService.docker.modem.followProgress(
+          stream,
+          async (err: any, output: any) => {
+            if (err) {
+              logger.error("Stream Error: " + err);
+              return;
+            }
+
+            logger.info("Image pulled successfully");
+            const containerConfig: any = {
+              ...info,
+              ...info.Config,
+              ...info.HostConfig,
+              ...info.NetworkSettings,
+              name: info.Name,
+              Image: image,
+            };
+
+            const mounts = info.Mounts;
+            const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
+            containerConfig.HostConfig.Binds = binds;
+
+            await container.stop();
+            await container.remove();
+
+            const newContainer = await DockerService.docker.createContainer(containerConfig);
+            await newContainer.start();
+
+            DockerService.docker.getImage(oldImageId).remove({ force: true }, (err, data) => {
+                if (err) {
+                  logger.error("Error removing old image: " + err);
+                } else {
+                  logger.info("Old image removed successfully");
+                }
+            });
+            
+            return newContainer;
+          },
+          function (event) {
+            logger.info(`Status: ${event.status}`);
+            // check if progressDetail exists
+            if (event.progressDetail) {
+              // const current = event.progressDetail.current || 0;
+              // const total = event.progressDetail.total || 0;
+
+              //  total progress and size
+              // totalProgress += current;
+              // totalSize += total;
+
+              // const percentage = Math.round((totalProgress / totalSize) * 100);
+
+              // print percentage
+              // logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
+
+              // Send Progress to MQTT
+              // TODO: Needs to be fixed
+              // HomeassistantService.publishUpdateProgressMessage(info, client, percentage, totalSize - totalProgress, event.status, false);
+            }
+          }
+        );
+      });
+    }
+    catch(error:any) {
+      logger.error('Error updating container');
+      logger.error(error);
+    }
   }
 
   /**
