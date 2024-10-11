@@ -21,7 +21,7 @@
   "dependencies": {
     "axios": "^1.7.7",
     "dockerode": "^4.0.2",
-    "figlet": "^1.7.0",
+    "figlet": "^1.8.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.21",
     "mqtt": "^5.10.1",
