@@ -301,9 +301,9 @@ export default class HomeassistantService {
     const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
     let updatePayload = {
       update: {
-        state: null || "available",
-        progress: null || 0,
-        remaining: null || 0,
+        state: "available",
+        progress: 0,
+        remaining: 0,
       }
     };
 
@@ -371,8 +371,8 @@ export default class HomeassistantService {
           installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
           latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
           last_check: new Date().toISOString(),
-          progress: null || 0,
-          remaining: null || 0,
+          progress: 0,
+          remaining: 0,
         }
       };
 
