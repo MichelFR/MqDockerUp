@@ -429,11 +429,15 @@ export default class HomeassistantService {
     let dockerPorts = "";
     if (container.HostConfig.PortBindings) {
       for (const [key, value] of Object.entries(container.HostConfig.PortBindings)) {
-        if (value) {
-          dockerPorts += `${key} : ${value[0].HostPort}, `;
+        if (value && Array.isArray(value) && value.length > 0) {
+          const hostPort = (value[0] as { HostPort: string }).HostPort;
+          dockerPorts += `${key} : ${hostPort}, `;
         }
       }
-      dockerPorts = dockerPorts.slice(0, -2); // Remove last comma
+      // Remove the last comma and space if dockerPorts is not empty
+      if (dockerPorts.endsWith(", ")) {
+        dockerPorts = dockerPorts.slice(0, -2);
+      }
     }
 
     let registry = await DockerService.getImageRegistryName(image);
