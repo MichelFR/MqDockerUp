@@ -2,6 +2,7 @@ import DockerService from "../services/DockerService";
 import ConfigService from "../services/ConfigService";
 import DatabaseService from "../services/DatabaseService";
 import logger from "../services/LoggerService"
+import {ContainerInspectInfo} from "dockerode";
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
@@ -86,6 +87,24 @@ export default class HomeassistantService {
       // Container Uptime
       topic = `homeassistant/sensor/${topicName}/docker_uptime/config`;
       payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", deviceName, "timestamp", "mdi:timer-sand");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container Created
+      topic = `homeassistant/sensor/${topicName}/docker_created/config`;
+      payload = this.createPayload("Container Created", image, tag, "dockerCreated", deviceName, "timestamp", "mdi:calendar-clock");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container Restart Count
+      topic = `homeassistant/sensor/${topicName}/docker_restart_count/config`;
+      payload = this.createPayload("Container Restart Count", image, tag, "dockerRestartCount", deviceName, null, "mdi:restart");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container Restart Policy
+      topic = `homeassistant/sensor/${topicName}/docker_restart_policy/config`;
+      payload = this.createPayload("Container Restart Policy", image, tag, "dockerRestartPolicy", deviceName, null, "mdi:restart");
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
@@ -174,7 +193,7 @@ export default class HomeassistantService {
    * @param client The MQTT client
    */
   public static async publishMessages(client: any) {
-    const containers = await DockerService.listContainers();
+    const containers: ContainerInspectInfo[] = await DockerService.listContainers();
 
     for (const container of containers) {
       // Publish Device message (for HA)
@@ -395,12 +414,21 @@ export default class HomeassistantService {
    * @param container
    * @param client
    */
-  public static async publishDeviceMessage(container: any, client: any) {
+  public static async publishDeviceMessage(container: ContainerInspectInfo, client: any) {
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const containerName = container.Name.substring(1);
-    const dockerPorts = container.Config.ExposedPorts ? Object.keys(container.Config.ExposedPorts).join(", ") : null;
+
+    let dockerPorts = "";
+    if (container.HostConfig.PortBindings) {
+      for (const [key, value] of Object.entries(container.HostConfig.PortBindings)) {
+        if (value) {
+          dockerPorts += `${key} : ${value[0].HostPort}, `;
+        }
+      }
+      dockerPorts = dockerPorts.slice(0, -2); // Remove last comma
+    }
 
     let registry = await DockerService.getImageRegistryName(image);
 
@@ -412,6 +440,9 @@ export default class HomeassistantService {
       dockerId: container.Id.substring(0, 12),
       dockerStatus: container.State.Status,
       dockerUptime: container.State.StartedAt,
+      dockerCreated: container.Created,
+      dockerRestartCount: container.RestartCount,
+      dockerRestartPolicy: container?.HostConfig?.RestartPolicy?.Name || "unknown",
       dockerPorts: dockerPorts,
       dockerRegistry: registry,
     };
