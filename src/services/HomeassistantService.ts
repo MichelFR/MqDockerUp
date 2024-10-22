@@ -108,6 +108,12 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, { retain: true });
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
+      // Container Health
+      topic = `homeassistant/sensor/${topicName}/docker_health/config`;
+      payload = this.createPayload("Container Health", image, tag, "dockerHealth", deviceName, null, "mdi:heart-pulse");
+      this.publishMessage(client, topic, payload, { retain: true });
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
       // Container Ports
       topic = `homeassistant/sensor/${topicName}/docker_ports/config`;
       payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", deviceName, null, "mdi:lan-connect");
@@ -443,6 +449,7 @@ export default class HomeassistantService {
       dockerCreated: container.Created,
       dockerRestartCount: container.RestartCount,
       dockerRestartPolicy: container?.HostConfig?.RestartPolicy?.Name || "unknown",
+      dockerHealth: container.State.Health?.Status || "unknown",
       dockerPorts: dockerPorts,
       dockerRegistry: registry,
     };
