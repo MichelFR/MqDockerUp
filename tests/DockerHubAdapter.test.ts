@@ -22,21 +22,21 @@ describe('DockerHubAdapter', () => {
       const adapter = new DockerhubAdapter('officialImage');
       const url = adapter['getImageUrl']();
 
-      expect(url).toEqual('https://hub.docker.com/v2/repositories/library/officialImage/tags?name=latest');
+      expect(url).toEqual('https://hub.docker.com/v2/repositories/library/officialImage/tags/latest');
     });
 
     it('should return the correct URL for a user image', () => {
       const adapter = new DockerhubAdapter('user/image');
       const url = adapter['getImageUrl']();
 
-      expect(url).toEqual('https://hub.docker.com/v2/repositories/user/image/tags?name=latest');
+      expect(url).toEqual('https://hub.docker.com/v2/repositories/user/image/tags/latest');
     });
 
     it('should return the correct URL with a custom tag', () => {
       const adapter = new DockerhubAdapter('officialImage', 'customTag');
       const url = adapter['getImageUrl']();
 
-      expect(url).toEqual('https://hub.docker.com/v2/repositories/library/officialImage/tags?name=customTag');
+      expect(url).toEqual('https://hub.docker.com/v2/repositories/library/officialImage/tags/customTag');
     });
   });
 });
