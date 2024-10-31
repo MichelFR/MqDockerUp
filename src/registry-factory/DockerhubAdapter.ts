@@ -36,10 +36,10 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
 
         if (parts.length === 1) {
             // If the image name doesn't include a '/', it's an official library image
-            return `${DockerhubAdapter.DOCKER_API_URL}/library/${this.image}/tags?name=${this.tag}`;
+            return `${DockerhubAdapter.DOCKER_API_URL}/library/${this.image}/tags/${this.tag}`;
         } else {
             // If the image name includes a '/', it's a user image
-            return `${DockerhubAdapter.DOCKER_API_URL}/${this.image}/tags?name=${this.tag}`;
+            return `${DockerhubAdapter.DOCKER_API_URL}/${this.image}/tags/${this.tag}`;
         }
     }
 
@@ -48,9 +48,9 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
             let response = await this.http.get(this.getImageUrl());
             let newDigest = null;
 
-            let images = response.data.results[0].images;
+            let images = response.data.images;
             if (images && images.length > 0) {
-                newDigest = response.data.results[0].digest.split(":")[1];
+                newDigest = response.data.digest.split(":")[1];
             } else {
                 console.log("No Images found");
                 console.log(response);
