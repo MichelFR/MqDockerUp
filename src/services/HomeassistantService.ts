@@ -337,7 +337,7 @@ export default class HomeassistantService {
       updatePayload.update.remaining = remaining;
     }
 
-    console.log(updatePayload);
+    logger.info(updatePayload);
 
     // TODO: Debounce this and make it somehow display in homeassistant.
     // this.publishMessage(client, updateTopic, updatePayload, {retain: false});

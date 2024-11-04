@@ -56,7 +56,7 @@ const versionAscii = figlet.textSync(`MqDockerUp`, {
 
 const clearConsole = () => {
   console.clear();
-  console.log(`\n${versionAscii}\nStarting \x1b[36mMqDockerUp\x1b[0m V${packageJson.version} ... \n`);
+  logger.info(`\n${versionAscii}\nStarting \x1b[36mMqDockerUp\x1b[0m V${packageJson.version} ... \n`);
 };
 
 clearConsole();

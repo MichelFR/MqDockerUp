@@ -1,5 +1,6 @@
 import yaml from "yaml";
 import fs from "fs";
+import logger from "./LoggerService";
 
 /**
  * ConfigService class that provides access to the application configuration settings.
@@ -51,7 +52,7 @@ export default class ConfigService {
       // Merge the config values with the default values
       return Object.assign(defaults, config);
     } catch (e) {
-      console.log(e);
+      logger.error(e);
     }
   }
 }
