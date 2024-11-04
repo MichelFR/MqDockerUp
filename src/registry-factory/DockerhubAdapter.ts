@@ -1,3 +1,4 @@
+import logger from "../services/LoggerService";
 import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
 
 export class DockerhubAdapter extends ImageRegistryAdapter {
@@ -42,27 +43,28 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
             return `${DockerhubAdapter.DOCKER_API_URL}/${this.image}/tags/${this.tag}`;
         }
     }
-
+    
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
         try {
             let response = await this.http.get(this.getImageUrl());
             let newDigest = null;
-
+    
             let images = response.data.images;
             if (images && images.length > 0) {
                 newDigest = response.data.digest.split(":")[1];
             } else {
-                console.log("No Images found");
-                console.log(response);
+                logger.error("No Images found");
+                logger.error(response);
             }
-
+    
             const isDifferent = this.oldDigest !== newDigest;
-
+    
             return { newDigest, isDifferent };
         } catch (error) {
-            console.error(`Failed to check for new Dockerhub image digest: ${error}`);
-            console.warn(`This might be a locally generated image. To prevent similar issues, add \`mqdockerup.ignore=true\` label to exclude it from future MqDockerUp checks`)
+            logger.error(`Failed to check for new Dockerhub image digest: ${error}`);
+            logger.warn(`This might be a locally generated image. To prevent similar issues, add \`mqdockerup.ignore=true\` label to exclude it from future MqDockerUp checks`);
             throw error;
         }
     }
-}
+    }
+    

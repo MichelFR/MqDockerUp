@@ -159,7 +159,7 @@ client.on("message", async (topic: string, message: any) => {
 // Docker event handlers
 // TODO: Do this in a more elegant way
 const containerEventHandler = _.debounce((eventName: string, data: {containerName: string, containerId: string}) => {
-  console.log(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
+  logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
 DockerService.events.on('create', (data) => {
