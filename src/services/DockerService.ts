@@ -57,7 +57,7 @@ export default class DockerService {
     const containers = await DockerService.docker.listContainers({ all: true });
 
     return Promise.all(
-      containers.map(async (container) => {
+      containers.filter((container) => !container.Labels && !container.Labels["mqdockerup.ignore"] && container.Labels["mqdockerup.ignore"] !== "true").map(async (container) => {
         const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
         return containerInfo;
       })
