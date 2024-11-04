@@ -24,6 +24,7 @@
     "figlet": "^1.8.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.21",
+    "mqdockerup": "file:",
     "mqtt": "^5.10.1",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
