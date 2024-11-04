@@ -14,13 +14,13 @@ if (!fs.existsSync(logsDirectory)) {
 const logFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp({ format: 'DD.MM.YYYY HH:mm:ss' }),
-  winston.format.align(),
   winston.format.printf(info => {
     const { timestamp, level, message, ...args } = info;
 
     let output = `\x1b[90m${timestamp}\x1b[0m [${level}] ${message}`;
     return output;
-  })
+  }),
+  winston.format.align()
 );
 
 
