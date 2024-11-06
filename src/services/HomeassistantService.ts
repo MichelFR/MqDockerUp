@@ -1,8 +1,8 @@
-import DockerService from "../services/DockerService";
-import ConfigService from "../services/ConfigService";
-import DatabaseService from "../services/DatabaseService";
-import logger from "../services/LoggerService"
-import {ContainerInspectInfo} from "dockerode";
+import DockerService from "./DockerService";
+import ConfigService from "./ConfigService";
+import DatabaseService from "./DatabaseService";
+import logger from "./LoggerService"
+import {ContainerInspectInfo, ContainerInfo} from "dockerode";
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
@@ -194,6 +194,24 @@ export default class HomeassistantService {
     }
   }
 
+  
+  /**
+   * Checks if a container should be ignored for updates based on its labels and/or environment variables.
+   * A container is ignored if it has the label "mqdockerup.ignore_update" set to "true" and/or its
+   * name is included in the list of, comma separated, ignored containers in the configuration file or the env varaible "IGNORE_UPDATES" for docker.
+   *
+   * @param container The container to check.
+   * @returns A boolean indicating if the container should be ignored for updates.
+   */
+  private static ignoreUpdates(container: ContainerInspectInfo) {
+    const ignoreUpdatesByLabel: boolean = ("Labels" in container.Config) && ("mqdockerup.ignore_update" in container.Config.Labels) && container.Config.Labels["mqdockerup.ignore_update"] === "true";
+
+    const contianersCommaList = ConfigService.getConfig()?.ignore?.updates;
+    const ignoreUpdatesByEnv = contianersCommaList.includes(container.Name.replace("/",""));
+
+    return ignoreUpdatesByLabel || ignoreUpdatesByEnv
+  }
+
   /**
    * Publishes the device message to the MQTT broker
    * @param client The MQTT client
@@ -206,7 +224,13 @@ export default class HomeassistantService {
       await this.publishDeviceMessage(container, client);
 
       // Publish update message (for HA)
-      await this.publishUpdateMessage(container, client);
+      // await this.publishUpdateMessage(container, client);
+
+      if (!this.ignoreUpdates(container)) {
+        logger.warn(container.Name)
+        await this.publishUpdateMessage(container, client);
+        
+      }
     }
   }
 
