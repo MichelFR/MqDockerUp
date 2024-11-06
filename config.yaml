@@ -16,5 +16,9 @@ mqtt:
   protocolVersion: 5
 
 accessTokens:
-  dockerhub:
+  dockerhub: 
   github:
+
+ignore:
+  containers: ""
+  updates: ""
