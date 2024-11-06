@@ -31,6 +31,10 @@ export default class ConfigService {
           dockerhub: "",
           github: "",
         },
+        ignore:{
+          containers: "",
+          updates: ""
+        }
       };
 
       const config = yaml.parse(fs.readFileSync("config.yaml", "utf8"));
@@ -47,6 +51,10 @@ export default class ConfigService {
 
       for (const key of Object.keys(defaults.accessTokens)) {
         config.accessTokens[key] = process.env[`ACCESSTOKENS_${key.toUpperCase()}`] ?? config.accessTokens[key];
+      }
+
+      for (const key of Object.keys(defaults.ignore)) {
+        config.ignore[key] = process.env[`IGNORE_${key.toUpperCase()}`] ?? config.ignore[key];
       }
 
       // Merge the config values with the default values
