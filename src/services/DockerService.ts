@@ -1,8 +1,9 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
 import { EventEmitter } from 'events';
-import logger from "../services/LoggerService";
 import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
+import logger from "./LoggerService";
+import ConfigService from "./ConfigService";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -48,6 +49,27 @@ export default class DockerService {
     });
   }
 
+
+  
+  /**
+   * Checks if a container should be ignored based on its labels and/or environment variables.
+   * A container is ignored if it has the label "mqdockerup.ignore" set to "true" and/or its
+   * name is included in the list of, comma separated, ignored containers in the configuration file or the env varaible "IGNORE_CONTAINERS" for docker.
+   * @param container The container to check.
+   * @returns A boolean indicating if the container should be ignored.
+   */
+  private static ignoreContainer(container: Docker.ContainerInfo){
+    const ignoreContainerByLabel: boolean = "Labels" in container && "mqdockerup.ignore" in container.Labels && container.Labels["mqdockerup.ignore"] === "true";
+
+    const contianersCommaList = ConfigService.getConfig()?.ignore?.containers;
+    let ignoreContainerByEnv: boolean = false;
+    container.Names.forEach(containerName => {
+      ignoreContainerByEnv = ignoreContainerByEnv || (contianersCommaList.includes(containerName.replace("/","")));
+    })
+
+    return ignoreContainerByLabel || ignoreContainerByEnv;
+  }
+
   /**
    * Returns a list of inspect information for all containers.
    *
@@ -57,7 +79,9 @@ export default class DockerService {
     const containers = await DockerService.docker.listContainers({ all: true });
 
     return Promise.all(
-      containers.filter((container) => !container.Labels && !container.Labels["mqdockerup.ignore"] && container.Labels["mqdockerup.ignore"] !== "true").map(async (container) => {
+      containers.filter((container) => { 
+        return !(this.ignoreContainer(container)) 
+      }).map(async (container) => {
         const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
         return containerInfo;
       })
