@@ -80,6 +80,7 @@ The MQTT configuration is specified in the `mqtt` section:
 mqtt:
   connectionUri: "mqtt://localhost:1883"
   topic: "mqdockerup"
+  discovery_prefix: "homeassistant"
   clientId: "mqdockerup"
   username: "ha"
   password: "12345678"
@@ -117,6 +118,7 @@ You can also use environment variables to override the values in the config file
 - `MQTT_CLIENTID`: The MQTT client ID to use when connecting to the broker.
 - `MQTT_USERNAME`: The username to use when connecting to the MQTT broker.
 - `MQTT_PASSWORD`: The password to use when connecting to the MQTT broker.
+- `MQTT_HA_LEGACY`: In Home Assistant `2024.11.X` changed the way how update entity works, so if you are in a previous version set this to `true`
 - `MQTT_CONNECTTIMEOUT`: The maximum time, in seconds, to wait for a successful connection to the MQTT broker.
 - `MQTT_PROTOCOLVERSION`: The MQTT protocol version to use when connecting to the broker.
 - `IGNORE_CONTAINERS`: A comma separated list of container to be ignored.
