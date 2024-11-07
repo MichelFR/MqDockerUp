@@ -3,6 +3,7 @@ import ConfigService from "./ConfigService";
 import DatabaseService from "./DatabaseService";
 import logger from "./LoggerService"
 import {ContainerInspectInfo, ContainerInfo} from "dockerode";
+import IgnoreService from "./IgnoreService";
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
@@ -187,30 +188,17 @@ export default class HomeassistantService {
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Update
-      topic = `homeassistant/update/${topicName}/docker_update/config`;
-      payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", deviceName, container.Id);
-      this.publishMessage(client, topic, payload, { retain: true });
-      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+      
+      if (!IgnoreService.ignoreUpdates(container)){
+        topic = `homeassistant/update/${topicName}/docker_update/config`;
+        payload = this.createUpdatePayload("Update", image, tag, "dockerUpdate", deviceName, container.Id);
+        this.publishMessage(client, topic, payload, { retain: true });
+        if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+      }
     }
   }
 
-  
-  /**
-   * Checks if a container should be ignored for updates based on its labels and/or environment variables.
-   * A container is ignored if it has the label "mqdockerup.ignore_update" set to "true" and/or its
-   * name is included in the list of, comma separated, ignored containers in the configuration file or the env varaible "IGNORE_UPDATES" for docker.
-   *
-   * @param container The container to check.
-   * @returns A boolean indicating if the container should be ignored for updates.
-   */
-  private static ignoreUpdates(container: ContainerInspectInfo) {
-    const ignoreUpdatesByLabel: boolean = ("Labels" in container.Config) && ("mqdockerup.ignore_update" in container.Config.Labels) && container.Config.Labels["mqdockerup.ignore_update"] === "true";
 
-    const contianersCommaList = ConfigService.getConfig()?.ignore?.updates;
-    const ignoreUpdatesByEnv = contianersCommaList.includes(container.Name.replace("/",""));
-
-    return ignoreUpdatesByLabel || ignoreUpdatesByEnv
-  }
 
   /**
    * Publishes the device message to the MQTT broker
@@ -226,8 +214,7 @@ export default class HomeassistantService {
       // Publish update message (for HA)
       // await this.publishUpdateMessage(container, client);
 
-      if (!this.ignoreUpdates(container)) {
-        logger.warn(container.Name)
+      if (!IgnoreService.ignoreUpdates(container)) {
         await this.publishUpdateMessage(container, client);
         
       }
