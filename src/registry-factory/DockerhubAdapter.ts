@@ -62,7 +62,7 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
             return { newDigest, isDifferent };
         } catch (error) {
             logger.error(`Failed to check for new Dockerhub image digest: ${error}`);
-            logger.warn(`This might be a locally generated image. To prevent similar issues, add \`mqdockerup.ignore=true\` label to exclude it from future MqDockerUp checks`);
+            logger.warn(`This might be a locally generated image. To prevent similar issues, exclude it from future MqDockerUp checks (see docs)`);
             throw error;
         }
     }
