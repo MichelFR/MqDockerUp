@@ -13,6 +13,7 @@ mqtt:
   discovery_prefix: "homeassistant"
   clientId: "mqdockerup"
   username: "ha"
+  ha_legacy: false
   connectTimeout: 60
   protocolVersion: 5
 
