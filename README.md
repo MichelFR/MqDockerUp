@@ -113,13 +113,23 @@ You can also use environment variables to override the values in the config file
 - `MAIN_INTERVAL`: The interval at which updates are checked and published to the MQTT broker.
 - `MQTT_CONNECTIONURI`: The URL of the MQTT broker to connect to.
 - `MQTT_TOPIC`: The MQTT topic to publish updates to.
+- `MQTT_DISCOVERY_PREFIX`: The name chosed in HA as discovery prefix (change only if you changed it in HA)
 - `MQTT_CLIENTID`: The MQTT client ID to use when connecting to the broker.
 - `MQTT_USERNAME`: The username to use when connecting to the MQTT broker.
 - `MQTT_PASSWORD`: The password to use when connecting to the MQTT broker.
 - `MQTT_CONNECTTIMEOUT`: The maximum time, in seconds, to wait for a successful connection to the MQTT broker.
 - `MQTT_PROTOCOLVERSION`: The MQTT protocol version to use when connecting to the broker.
+- `IGNORE_CONTAINERS`: A comma separated list of container to be ignored.
+- `IGNORE_UPDATES`: A comma separated list of container which updates should be ignored.
 - `ACCESSTOKENS_DOCKERHUB`: The Dockerhub token.
 - `ACCESSTOKENS_GITHUB`: The Github token.
+
+## Labels
+You can use some of these labels on individual containers to apply to them the effect written in the description.
+
+- `mqdockerup.ignore_container=true`: Container to be ignored.
+- `mqdockerup.ignore_updates`: Container which updates should be ignored.
+
 
 ## Screenshots
 ![image](https://user-images.githubusercontent.com/7061122/218336295-a040936a-20f3-48da-8835-d9c6746fc8f6.png)
