@@ -10,6 +10,7 @@ main:
 mqtt:
   connectionUri: "mqtt://127.0.0.1:1883"
   topic: "mqdockerup"
+  discovery_prefix: "homeassistant"
   clientId: "mqdockerup"
   username: "ha"
   connectTimeout: 60
