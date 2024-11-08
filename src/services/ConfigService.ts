@@ -24,7 +24,7 @@ export default class ConfigService {
           discovery_prefix: "homeassistant",
           clientId: "mqdockerup",
           username: "ha",
-          password: "12345678",
+          password: "",
           ha_legacy: false,
           connectTimeout: 60,
           protocolVersion: 5,
