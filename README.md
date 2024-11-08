@@ -1,4 +1,4 @@
-https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png
+[![Create Release](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml)
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png">
 
