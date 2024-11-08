@@ -1,6 +1,7 @@
 import {ContainerInspectInfo, ContainerInfo} from "dockerode";
 import ConfigService from "./ConfigService";
 
+const config = ConfigService.getConfig();
 
 export default class IgnoreService{
 
@@ -14,7 +15,7 @@ export default class IgnoreService{
   public static ignoreContainer(container: ContainerInfo){
       const ignoreContainerByLabel: boolean = ("Labels" in container) && ("mqdockerup.ignore_container" in container.Labels) && container.Labels["mqdockerup.ignore_container"] === "true";
 
-      const contianersCommaList = ConfigService.getConfig()?.ignore?.containers;
+      const contianersCommaList = config?.ignore?.containers;
       const ignoreContainerByEnv: boolean = container.Names.some(name => contianersCommaList.includes(name.replace("/", "")));
 
       return ignoreContainerByLabel || ignoreContainerByEnv;
@@ -31,7 +32,7 @@ export default class IgnoreService{
   public static ignoreUpdates(container: ContainerInspectInfo) {
     const ignoreUpdatesByLabel: boolean = ("Labels" in container.Config) && ("mqdockerup.ignore_updates" in container.Config.Labels) && container.Config.Labels["mqdockerup.ignore_updates"] === "true";
 
-    const contianersCommaList = ConfigService.getConfig()?.ignore?.updates;
+    const contianersCommaList = config?.ignore?.updates;
     const ignoreUpdatesByEnv = contianersCommaList.includes(container.Name.replace("/",""));
 
     return ignoreUpdatesByLabel || ignoreUpdatesByEnv
