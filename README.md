@@ -49,6 +49,7 @@ services:
     restart: always
     environment:
       MAIN_INTERVAL: "5m"
+      MAIN_IMAGEUPDATEINTERVAL: ""
       MAIN_PREFIX: ""
       MQTT_CONNECTIONURI: "mqtt://127.0.0.1:1883"
       MQTT_USERNAME: "ha"
@@ -69,10 +70,12 @@ The main configuration is specified in the `main` section:
 ```yaml
 main:
   interval: "5m"
+  imageUpdateInterval: ""
   prefix: ""
 ```
-The `interval` parameter specifies the frequency at which updates are checked and published to the MQTT broker. The interval must be in the format `[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks).
-The `prefix` parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.
+The `interval` parameter specifies the frequency at which container updates are checked and published to the MQTT broker. The interval must be in the format `[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks).
+The `imageUpdateInterval` parameter specifies the frequency at which image updates are checked. Allow this to be higher value than `interval` to avoid 429 errors on the image registries. If not provided mqDockerUp won't check for image updates.
+The `prefix` parameter specifies a prefix to add to the MQTT topic when publishing updates to `homeassistant/sensor` topics. This is also prefix that your MQTT entity in HA will have. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.
 
 ### MQTT Configuration
 The MQTT configuration is specified in the `mqtt` section:

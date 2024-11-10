@@ -19,7 +19,7 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
 });
 
 // Check for new/old containers and publish updates
-const checkAndPublishUpdates = async (): Promise<void> => {
+const checkAndPublishContainersMessages = async (): Promise<void> => {
   logger.info("Checking for removed containers...");
   const containers = await DockerService.listContainers();
   const runningContainerIds = containers.map(container => container.Id);
@@ -59,27 +59,49 @@ const checkAndPublishUpdates = async (): Promise<void> => {
   logger.info("Checking for containers...");
   await HomeassistantService.publishConfigMessages(client);
 
-  logger.info("Checking for image updates...");
+  logger.info("Checking for container updates...");
   await HomeassistantService.publishAvailability(client, true);
-  await HomeassistantService.publishMessages(client);
+  await HomeassistantService.publishContainerMessages(client);
 
-  logger.info("Finished checking for image updates");
+  logger.info("Finished checking for container updates");
   logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
 };
 
-let intervalId: NodeJS.Timeout;
+const checkAndPublishImageUpdateMessages = async() : Promise<void> => {
+  logger.info("Checking for image updates...");
+  await HomeassistantService.publishImageUpdateMessages(client);
 
-const startInterval = async () => {
-  intervalId = setInterval(checkAndPublishUpdates, TimeService.parseDuration(config.main.interval));
+  logger.info("Finished checking for image updates");
+  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.imageUpdateInterval))}`);
+};
+
+let containerCheckingIntervalId: NodeJS.Timeout;
+
+const startContainerCheckingInterval = async () => {
+  logger.info(`Setting up startContainerCheckingInterval with value ${config.main.interval}`);
+  containerCheckingIntervalId = setInterval(checkAndPublishContainersMessages, TimeService.parseDuration(config.main.interval));
+};
+
+let imageCheckingInterval: NodeJS.Timeout;
+
+const startImageCheckingInterval = async () => {
+  logger.info(`Setting up startImageCheckingInterval with value ${config.main.imageUpdateInterval}`);
+  imageCheckingInterval = setInterval(checkAndPublishImageUpdateMessages, TimeService.parseDuration(config.main.imageUpdateInterval));
 };
 
 // Connected to MQTT broker
 client.on('connect', async function () {
   logger.info('MQTT client successfully connected');
 
-  await HomeassistantService.publishAvailability(client, true);
-  await checkAndPublishUpdates();
-  startInterval();
+  await checkAndPublishContainersMessages();
+  startContainerCheckingInterval();
+
+  if (config.main.imageUpdateInterval) {
+    await checkAndPublishImageUpdateMessages();
+    startImageCheckingInterval();
+  } else {
+    logger.info('Skipping setup of imageChecking because config.main.imageUpdateInterval is not configured.')
+  }
 
   client.subscribe(`${config.mqtt.topic}/update`);
   client.subscribe(`${config.mqtt.topic}/restart`);
@@ -112,7 +134,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info(`Got update message for ${image}`);
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
-      await checkAndPublishUpdates();
+      await checkAndPublishContainersMessages();
     }
   } else if (topic == `${config.mqtt.topic}/restart`) {
     let data;
@@ -133,7 +155,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Restarted container");
     }
 
-    await checkAndPublishUpdates();
+    await checkAndPublishContainersMessages();
   } else if (topic == `${config.mqtt.topic}/manualUpdate`) {
     let data;
     try {
@@ -151,7 +173,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info(`Got manual update message for ${data?.containerId}`);
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
-      await checkAndPublishUpdates();
+      await checkAndPublishContainersMessages();
     }
   }
 });
@@ -164,17 +186,17 @@ const containerEventHandler = _.debounce((eventName: string, data: {containerNam
 
 DockerService.events.on('create', (data) => {
   containerEventHandler('created', data);
-  checkAndPublishUpdates();
+  checkAndPublishContainersMessages();
 });
 
 DockerService.events.on('start', (data) => {
   containerEventHandler('started', data);
-  checkAndPublishUpdates();
+  checkAndPublishContainersMessages();
 });
 
 DockerService.events.on('die', (data) => {
   containerEventHandler('died', data);
-  checkAndPublishUpdates();
+  checkAndPublishContainersMessages();
 });
 
 
