@@ -198,15 +198,25 @@ export default class HomeassistantService {
    * Publishes the device message to the MQTT broker
    * @param client The MQTT client
    */
-  public static async publishMessages(client: any) {
+  public static async publishContainerMessages(client: any) {
     const containers: ContainerInspectInfo[] = await DockerService.listContainers();
 
     for (const container of containers) {
       // Publish Device message (for HA)
-      await this.publishDeviceMessage(container, client);
+      await this.publishContainerMessage(container, client);
+    }
+  }
 
+  /**
+   * Publishes update messages to the MQTT broker
+   * @param client The MQTT client
+   */
+  public static async publishImageUpdateMessages(client: any) {
+    const containers: ContainerInspectInfo[] = await DockerService.listContainers();
+
+    for (const container of containers) {
       // Publish update message (for HA)
-      await this.publishUpdateMessage(container, client);
+      await this.publishImageUpdateMessage(container, client);
     }
   }
 
@@ -349,7 +359,7 @@ export default class HomeassistantService {
      * @param container
      * @param client
      */
-  public static async publishUpdateMessage(container: any, client: any, progress: number | null = null, remaining: number | null = null, state: string | null = null, log: boolean = true) {
+  public static async publishImageUpdateMessage(container: any, client: any, progress: number | null = null, remaining: number | null = null, state: string | null = null, log: boolean = true) {
     if (typeof container == "string") {
       container = DockerService.docker.getContainer(container).inspect();
     }
@@ -420,7 +430,7 @@ export default class HomeassistantService {
    * @param container
    * @param client
    */
-  public static async publishDeviceMessage(container: ContainerInspectInfo, client: any) {
+  public static async publishContainerMessage(container: ContainerInspectInfo, client: any) {
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
