@@ -19,7 +19,7 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
 });
 
 // Check for new/old containers and publish updates
-const checkAndPublishContainersMessages = async (): Promise<void> => {
+const checkAndPublishContainerMessages = async (): Promise<void> => {
   logger.info("Checking for removed containers...");
   const containers = await DockerService.listContainers();
   const runningContainerIds = containers.map(container => container.Id);
@@ -79,7 +79,7 @@ let containerCheckingIntervalId: NodeJS.Timeout;
 
 const startContainerCheckingInterval = async () => {
   logger.info(`Setting up startContainerCheckingInterval with value ${config.main.interval}`);
-  containerCheckingIntervalId = setInterval(checkAndPublishContainersMessages, TimeService.parseDuration(config.main.interval));
+  containerCheckingIntervalId = setInterval(checkAndPublishContainerMessages, TimeService.parseDuration(config.main.interval));
 };
 
 let imageCheckingInterval: NodeJS.Timeout;
@@ -93,7 +93,7 @@ const startImageCheckingInterval = async () => {
 client.on('connect', async function () {
   logger.info('MQTT client successfully connected');
 
-  await checkAndPublishContainersMessages();
+  await checkAndPublishContainerMessages();
   startContainerCheckingInterval();
 
   if (config.main.imageUpdateInterval) {
@@ -134,7 +134,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info(`Got update message for ${image}`);
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
-      await checkAndPublishContainersMessages();
+      await checkAndPublishContainerMessages();
     }
   } else if (topic == `${config.mqtt.topic}/restart`) {
     let data;
@@ -155,7 +155,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Restarted container");
     }
 
-    await checkAndPublishContainersMessages();
+    await checkAndPublishContainerMessages();
   } else if (topic == `${config.mqtt.topic}/manualUpdate`) {
     let data;
     try {
@@ -173,7 +173,7 @@ client.on("message", async (topic: string, message: any) => {
       logger.info(`Got manual update message for ${data?.containerId}`);
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
-      await checkAndPublishContainersMessages();
+      await checkAndPublishContainerMessages();
     }
   }
 });
@@ -186,17 +186,17 @@ const containerEventHandler = _.debounce((eventName: string, data: {containerNam
 
 DockerService.events.on('create', (data) => {
   containerEventHandler('created', data);
-  checkAndPublishContainersMessages();
+  checkAndPublishContainerMessages();
 });
 
 DockerService.events.on('start', (data) => {
   containerEventHandler('started', data);
-  checkAndPublishContainersMessages();
+  checkAndPublishContainerMessages();
 });
 
 DockerService.events.on('die', (data) => {
   containerEventHandler('died', data);
-  checkAndPublishContainersMessages();
+  checkAndPublishContainerMessages();
 });
 
 
