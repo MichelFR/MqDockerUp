@@ -16,6 +16,7 @@ export default class ConfigService {
       const defaults = {
         main: {
           interval: "5m",
+          imageUpdateInterval: "1h",
           prefix: "",
         },
         mqtt: {

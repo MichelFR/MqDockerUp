@@ -34,10 +34,11 @@ The configuration file `config.yaml` (`\app\config.yaml` in docker the container
 
 The main configuration is specified in the `main` section of `config.yaml`:
 
-|       Name | Enviromental Variable | Type     | Default  | Description                                                                                                                                                                                                                                             |
-| ---------: | :-------------------: | :------- | :------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `interval` |    `MAIN_INTERVAL`    | `string` |   `5m`   | The interval at which updates are checked and published to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks). |
-|   `prefix` |     `MAIN_PREFIX`     | `string` | Optional | Parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.                                                              |
+|                  Name |   Enviromental Variable    | Type     | Default  | Description                                                                                                                                                                                                                                                           |
+| --------------------: | :------------------------: | :------- | :------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|            `interval` |      `MAIN_INTERVAL`       | `string` |   `5m`   | The interval at which container are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks). |
+| `imageUpdateInterval` | `MAIN_IMAGEUPDATEINTERVAL` | `string` |   `1h`   | The interval at which updates are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]`                                                                                    |
+|              `prefix` |       `MAIN_PREFIX`        | `string` | Optional | Parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.                                                                            |
 
 
 ### MQTT Configuration
@@ -144,6 +145,7 @@ services:
     restart: always
     environment:
       MAIN_INTERVAL: "5m"
+      MAIN_IMAGEUPDATEINTERVAL: "1h"
       MAIN_PREFIX: ""
       MQTT_CONNECTIONURI: "mqtt://127.0.0.1:1883"
       MQTT_TOPIC: "mqdockerup"
