@@ -4,6 +4,7 @@ main:
   # where [number] is a positive integer and [unit] is one of s (seconds)
   # m (minutes), h (hours), d (days), w (weeks).
   interval: "5m"
+  imageUpdateInterval: "1h"
   prefix: ""
 
 # MQTT configuration
