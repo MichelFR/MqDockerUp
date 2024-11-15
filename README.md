@@ -1,14 +1,13 @@
+<!-- ![DALL·E 2023-10-17 21 46 04 - Vector concept featuring the MQTT and Docker logos as puzzle pieces fitting together  Lines or arrows indicate the flow of data and updates between th](https://github.com/MichelFR/MqDockerUp/assets/7061122/e0d28e1c-5478-4b99-a885-1f7298876956) -->
+<center><img height=350 alt="image" src="https://github.com/user-attachments/assets/cb264d67-7d72-4527-9a27-4599a6f9d1c2"></center>
+
+<br>
+
 [![Create Release](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml)
 
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png">
-
-<!-- ![DALL·E 2023-10-17 21 46 04 - Vector concept featuring the MQTT and Docker logos as puzzle pieces fitting together  Lines or arrows indicate the flow of data and updates between th](https://github.com/MichelFR/MqDockerUp/assets/7061122/e0d28e1c-5478-4b99-a885-1f7298876956) -->
-
-<img width="500" alt="image" src="https://github.com/MichelFR/MqDockerUp/assets/7061122/e0d28e1c-5478-4b99-a885-1f7298876956">
-
 # MqDockerUp
-
 MqDockerUp is a tool that allows you to monitor and update your docker containers using MQTT and homeassistant. It can publish information about your containers, such as name, status, image, ports, etc., to an MQTT broker, and create or update corresponding entities in homeassistant. You can also send commands to start, stop, restart, or remove your containers via MQTT or homeassistant. It even creates update entities in Homeassistant to make it easy to update you running containers. MqDockerUp is easy to set up and configure, and supports multiple platforms and architectures. With MqDockerUp, you can have a unified and convenient way to manage your docker containers from anywhere.
+
 
 ## How it works
 
@@ -34,11 +33,20 @@ The configuration file `config.yaml` (`\app\config.yaml` in docker the container
 
 The main configuration is specified in the `main` section of `config.yaml`:
 
-|                  Name |   Enviromental Variable    | Type     | Default  | Description                                                                                                                                                                                                                                                           |
-| --------------------: | :------------------------: | :------- | :------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|            `interval` |      `MAIN_INTERVAL`       | `string` |   `5m`   | The interval at which container are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]` is one of `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or `w` (weeks). |
-| `imageUpdateInterval` | `MAIN_IMAGEUPDATEINTERVAL` | `string` |   `1h`   | The interval at which updates are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]`                                                                                    |
-|              `prefix` |       `MAIN_PREFIX`        | `string` | Optional | Parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.                                                                            |
+|                  Name |   Enviromental Variable    | Type     | Default  | Description                                                                                                                                                                                |
+| --------------------: | :------------------------: | :------- | :------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|            `interval` |      `MAIN_INTERVAL`       | `string` |   `5m`   | The interval at which container are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]`.      |
+| `imageUpdateInterval` | `MAIN_IMAGEUPDATEINTERVAL` | `string` |   `1h`   | The interval at which updates are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and `[unit]`.        |
+|              `prefix` |       `MAIN_PREFIX`        | `string` | Optional | Parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts. |
+
+
+
+### `[Unit]`
+
+|    __Unit__ |   `s`   |   `m`   |  `h`  | `d`  |  `w`  |
+| ----------: | :-----: | :-----: | :---: | :--: | :---: |
+| __Meaning__ | Seconds | Minutes | Hours | Days | Weeks |
+
 
 
 ### MQTT Configuration
@@ -84,10 +92,11 @@ The ignore configuration is specified in the `ignore` section of `config.yaml`:
 ## Config Examples
 
 ### <a name="yaml"></a> `config.yaml`
-Here some examples with all cofnig defaults:
+Here some examples with all config defaults:
 ```yaml
 main:
   interval: "5m"
+  imageUpdateInterval: "1h"
   prefix: ""
 mqtt:
   connectionUri: "mqtt://127.0.0.1:1883"
@@ -117,6 +126,7 @@ docker run -d \
   --restart always \
   --name mqdockerup \
   -e MAIN_INTERVAL="5m" \
+  -e MAIN_IMAGEUPDATEINTERVAL="1h" \
   -e MAIN_PREFIX="" \
   -e MQTT_CONNECTIONURI="mqtt=//127.0.0.1=1883" \
   -e MQTT_TOPIC="mqdockerup" \
@@ -124,7 +134,7 @@ docker run -d \
   -e MQTT_CLIENTID="mqdockerup" \
   -e MQTT_USERNAME="ha" \
   -e MQTT_PASSWORD="" \
-  -e MQTT_HA_LEGACY =false \
+  -e MQTT_HA_LEGACY=false \
   -e MQTT_CONNECTTIMEOUT=60 \
   -e MQTT_PROTOCOLVERSION=5 \
   -e ACCESSTOKENS_DOCKERHUB="" \
@@ -179,7 +189,8 @@ You can use some of these labels on individual containers to apply to them the e
 
 ## Screenshots
 
-![image](https://user-images.githubusercontent.com/7061122/218336295-a040936a-20f3-48da-8835-d9c6746fc8f6.png)
+![image](https://github.com/user-attachments/assets/f6f78bdb-4f7d-4080-8588-63fdaafa1e51)
+<img width="600" alt="image" src="https://user-images.githubusercontent.com/7061122/221386530-d5168c26-8ead-4418-9ab4-84ad6ff91ba9.png">
 
 ## Contribute
 
