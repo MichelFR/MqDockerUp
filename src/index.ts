@@ -138,6 +138,7 @@ client.on("message", async (topic: string, message: any) => {
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
       await checkAndPublishContainerMessages();
+      await checkAndPublishImageUpdateMessages();
     }
   } else if (topic == `${config.mqtt.topic}/restart`) {
     let data;
