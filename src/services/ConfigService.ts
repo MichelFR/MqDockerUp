@@ -17,13 +17,14 @@ export default class ConfigService {
   public static autoParseEnvVariable(value: string | any): boolean | number | string | undefined | any {
     if (value === undefined) return undefined;
 
-    // Tenta di convertire in booleano
-    if (value.toLowerCase() === 'true') return true;
-    if (value.toLowerCase() === 'false') return false;
-
-    // Tenta di convertire in numero
-    const numberValue = Number(value);
-    if (!isNaN(numberValue)) return numberValue;
+    if (typeof value === "string") {
+      // Tenta di convertire in booleano
+      if (value.toLowerCase() === 'true') return true;
+      if (value.toLowerCase() === 'false') return false;
+  
+      // Tenta di convertire in numero
+      const numberValue = Number(value);
+      if (!isNaN(numberValue)) return numberValue;}
 
     // Se nessuno dei precedenti, ritorna la stringa originale
     return value;
