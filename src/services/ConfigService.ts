@@ -76,35 +76,35 @@ export default class ConfigService {
       for (const key of Object.keys(defaults.main)) {
         const envKey = process.env[`MAIN_${key.toUpperCase()}`];
         if (envKey !== undefined) {
-          config.main[key] = this.autoParseEnvVariable(envKey);
+          config.main[key] = envKey;
         }
       }
 
       for (const key of Object.keys(defaults.mqtt)) {
         const envKey = process.env[`MQTT_${key.toUpperCase()}`];
         if (envKey !== undefined) {
-          config.mqtt[key] = this.autoParseEnvVariable(envKey);
+          config.mqtt[key] = envKey;
         }
       }
 
       for (const key of Object.keys(defaults.accessTokens)) {
         const envKey = process.env[`ACCESSTOKENS_${key.toUpperCase()}`];
         if (envKey !== undefined) {
-          config.accessTokens[key] = this.autoParseEnvVariable(envKey);
+          config.accessTokens[key] = envKey;
         }
       }
 
       for (const key of Object.keys(defaults.ignore)) {
         const envKey = process.env[`IGNORE_${key.toUpperCase()}`];
         if (envKey !== undefined) {
-          config.ignore[key] = this.autoParseEnvVariable(envKey);
+          config.ignore[key] = envKey;
         }
       }
 
       for (const key of Object.keys(defaults.logs)) {
         const envKey = process.env[`LOGS_${key.toUpperCase()}`];
         if (envKey !== undefined) {
-          config.logs[key] = this.autoParseEnvVariable(envKey);
+          config.logs[key] = envKey;
         }
       }
 

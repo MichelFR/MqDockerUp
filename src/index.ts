@@ -13,8 +13,8 @@ const config = ConfigService.getConfig();
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
   password: config.mqtt.password,
-  protocolVersion: config.mqtt.protocolVersion,
-  connectTimeout: config.mqtt.connectTimeout,
+  protocolVersion: ConfigService.autoParseEnvVariable(config.mqtt.protocolVersion),
+  connectTimeout: ConfigService.autoParseEnvVariable(config.mqtt.connectTimeout),
   clientId: config.mqtt.clientId,
 });
 logger.level = ConfigService?.getConfig()?.logs?.level;
