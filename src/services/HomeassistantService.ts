@@ -8,6 +8,8 @@ import IgnoreService from "./IgnoreService";
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
 
+const haLegacy = ConfigService.autoParseEnvVariable(config.mqtt?.haLegacy)
+
 export default class HomeassistantService {
 
   /**
@@ -347,7 +349,7 @@ public static async publishUpdateProgressMessage(container: any, client: any, up
   const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
   let updatePayload: any;
   
-  if (config.mqtt?.haLegacy) {
+  if (haLegacy) {
     updatePayload = {
       update: {
         state: "available",
@@ -423,7 +425,7 @@ public static async publishUpdateProgressMessage(container: any, client: any, up
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
       let updatePayload: any;
-      if (config.mqtt?.haLegacy) {
+      if (haLegacy) {
         updatePayload = {
           installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
           latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
