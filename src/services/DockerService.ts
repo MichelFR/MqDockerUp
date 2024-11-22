@@ -13,6 +13,7 @@ import {mqttClient} from "../index";
 export default class DockerService {
   public static docker = new Docker();
   public static events = new EventEmitter();
+  public static updatingContainers: string[] = [];
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
@@ -163,6 +164,8 @@ export default class DockerService {
           return;
         }
 
+        this.updatingContainers.push(containerId);
+
         // Use modem.followProgress to get progress events
         DockerService.docker.modem.followProgress(
           stream,
@@ -205,6 +208,8 @@ export default class DockerService {
               });
 
             HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
+            this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
+
             return newContainer;
           },
           function (event) {
