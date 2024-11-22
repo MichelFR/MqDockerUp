@@ -13,10 +13,11 @@ const config = ConfigService.getConfig();
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
   password: config.mqtt.password,
-  protocolVersion: config.mqtt.protocolVersion,
-  connectTimeout: config.mqtt.connectTimeout,
+  protocolVersion: ConfigService.autoParseEnvVariable(config.mqtt.protocolVersion),
+  connectTimeout: ConfigService.autoParseEnvVariable(config.mqtt.connectTimeout),
   clientId: config.mqtt.clientId,
 });
+logger.level = ConfigService?.getConfig()?.logs?.level;
 
 // Check for new/old containers and publish updates
 const checkAndPublishContainerMessages = async (): Promise<void> => {
@@ -58,49 +59,51 @@ const checkAndPublishContainerMessages = async (): Promise<void> => {
 
   logger.info("Checking for containers...");
   await HomeassistantService.publishConfigMessages(client);
-
-  logger.info("Checking for container updates...");
   await HomeassistantService.publishAvailability(client, true);
   await HomeassistantService.publishContainerMessages(client);
 
-  logger.info("Finished checking for container updates");
-  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.interval))}`);
+  logger.info("Finished checking for containers");
+  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.containerCheckInterval))}`);
 };
 
-const checkAndPublishImageUpdateMessages = async() : Promise<void> => {
+const checkAndPublishImageUpdateMessages = async (): Promise<void> => {
   logger.info("Checking for image updates...");
   await HomeassistantService.publishImageUpdateMessages(client);
 
   logger.info("Finished checking for image updates");
-  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.imageUpdateInterval))}`);
+  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.updateCheckInterval))}`);
 };
 
 let containerCheckingIntervalId: NodeJS.Timeout;
 
 const startContainerCheckingInterval = async () => {
-  logger.info(`Setting up startContainerCheckingInterval with value ${config.main.interval}`);
-  containerCheckingIntervalId = setInterval(checkAndPublishContainerMessages, TimeService.parseDuration(config.main.interval));
+  logger.verbose(`Setting up startContainerCheckingInterval with value ${config.main.containerCheckInterval}`);
+  containerCheckingIntervalId = setInterval(checkAndPublishContainerMessages, TimeService.parseDuration(config.main.containerCheckInterval));
 };
 
 let imageCheckingInterval: NodeJS.Timeout;
 
 const startImageCheckingInterval = async () => {
-  logger.info(`Setting up startImageCheckingInterval with value ${config.main.imageUpdateInterval}`);
-  imageCheckingInterval = setInterval(checkAndPublishImageUpdateMessages, TimeService.parseDuration(config.main.imageUpdateInterval));
+  logger.verbose(`Setting up startImageCheckingInterval with value ${config.main.updateCheckInterval}`);
+  imageCheckingInterval = setInterval(checkAndPublishImageUpdateMessages, TimeService.parseDuration(config.main.updateCheckInterval));
 };
 
 // Connected to MQTT broker
 client.on('connect', async function () {
   logger.info('MQTT client successfully connected');
 
-  await checkAndPublishContainerMessages();
-  startContainerCheckingInterval();
+  if (config?.ignore?.containers == "*") {
+    logger.warn('Skipping setup of container checking cause all containers is ignored `ignore.containers="*"`.')
+  } else {
+    await checkAndPublishContainerMessages();
+    startContainerCheckingInterval();
+  }
 
-  if (config.main.imageUpdateInterval) {
+  if (config?.ignore?.updates == "*") {
+    logger.warn('Skipping setup of image update checking cause all containers update is ignored `ignore.updates="*"`.')
+  } else {
     await checkAndPublishImageUpdateMessages();
     startImageCheckingInterval();
-  } else {
-    logger.info('Skipping setup of imageChecking because config.main.imageUpdateInterval is not configured.')
   }
 
   client.subscribe(`${config.mqtt.topic}/update`);
@@ -135,6 +138,7 @@ client.on("message", async (topic: string, message: any) => {
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
       await checkAndPublishContainerMessages();
+      await checkAndPublishImageUpdateMessages();
     }
   } else if (topic == `${config.mqtt.topic}/restart`) {
     let data;
@@ -180,8 +184,8 @@ client.on("message", async (topic: string, message: any) => {
 
 // Docker event handlers
 // TODO: Do this in a more elegant way
-const containerEventHandler = _.debounce((eventName: string, data: {containerName: string, containerId: string}) => {
-  console.log(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
+const containerEventHandler = _.debounce((eventName: string, data: { containerName: string, containerId: string }) => {
+  logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
 DockerService.events.on('create', (data) => {

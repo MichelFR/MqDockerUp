@@ -1,21 +1,31 @@
+# Main Configuration
 main:
-  # Interval at which the updates are checked and published.
-  # The interval must be specified in the format [number][unit]
-  # where [number] is a positive integer and [unit] is one of s (seconds)
-  # m (minutes), h (hours), d (days), w (weeks).
-  interval: "5m"
+  containerCheckInterval: "5m"
+  updateCheckInterval: ""
   prefix: ""
-  imageUpdateInterval: ""
 
-# MQTT configuration
+# MQTT Configuration
 mqtt:
   connectionUri: "mqtt://127.0.0.1:1883"
   topic: "mqdockerup"
+  discoveryPrefix: "homeassistant"
   clientId: "mqdockerup"
   username: "ha"
+  password: ""
+  haLegacy: false
   connectTimeout: 60
   protocolVersion: 5
 
+# Access Tokens Configuration
 accessTokens:
-  dockerhub:
-  github:
+  dockerhub: ""
+  github: ""
+
+# Ignore Configureation    
+ignore:
+  containers: ""
+  updates: ""
+
+# Logging Configuration
+logs:
+  level: "info"

@@ -1,3 +1,4 @@
+import logger from "../services/LoggerService";
 import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
 
 export class LscrAdapter extends ImageRegistryAdapter {
@@ -42,8 +43,8 @@ export class LscrAdapter extends ImageRegistryAdapter {
             if (images && images.length > 0) {
                 newDigest = response.data.results[0].digest.split(":")[1];
             } else {
-                console.log("No Images found");
-                console.log(response);
+                logger.error("No Images found");
+                logger.error(response);
             }
 
             const isDifferent = this.oldDigest !== newDigest;
