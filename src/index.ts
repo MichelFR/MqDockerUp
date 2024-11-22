@@ -207,28 +207,40 @@ DockerService.events.on('die', (data) => {
 });
 
 
+let isExiting = false;
 const exitHandler = async (exitCode: number, error?: any) => {
-  await HomeassistantService.publishAvailability(client, false);
-  const updatingContainers = DockerService.updatingContainers;
+  if (isExiting) {
+    return;
+  }
+  isExiting = true;
 
-  if (updatingContainers.length > 0) {
-    logger.warn(`Stopping MqDockerUp while updating containers: ${updatingContainers.join(", ")}`);
-    for (const containerId of updatingContainers) {
-      await HomeassistantService.publishAbortUpdateMessage(containerId, client);
+  try {
+    await HomeassistantService.publishAvailability(client, false);
+    const updatingContainers = DockerService.updatingContainers;
+
+    if (updatingContainers.length > 0) {
+      logger.warn(
+        `Stopping MqDockerUp while updating containers: ${updatingContainers.join(", ")}`
+      );
+      for (const containerId of updatingContainers) {
+        await HomeassistantService.publishAbortUpdateMessage(containerId, client);
+      }
     }
+
+    let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
+
+    if (error) {
+      logger.error(message);
+      logger.error(typeof error);
+      logger.error(error.stack);
+    } else {
+      logger.info(message);
+    }
+  } catch (e) {
+    logger.error("Error during exit handling:", e);
+  } finally {
+    process.exit(exitCode);
   }
-
-  let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
-
-  if (error) {
-    logger.error(message);
-    logger.error(typeof error);
-    logger.error(error.stack);
-  } else {
-    logger.info(message);
-  }
-
-  process.exit(exitCode);
 };
 
 client.on("error", (error) => exitHandler(1, error));
