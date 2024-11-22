@@ -19,6 +19,8 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
 });
 logger.level = ConfigService?.getConfig()?.logs?.level;
 
+export const mqttClient = client;
+
 // Check for new/old containers and publish updates
 const checkAndPublishContainerMessages = async (): Promise<void> => {
   logger.info("Checking for removed containers...");
@@ -207,7 +209,6 @@ DockerService.events.on('die', (data) => {
 const exitHandler = (exitCode: number, error?: any) => {
   HomeassistantService.publishAvailability(client, false);
 
-  const now = new Date().toLocaleString();
   let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
 
 
