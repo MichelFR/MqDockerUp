@@ -359,6 +359,26 @@ export default class HomeassistantService {
     this.publishMessage(client, updateTopic, updatePayload, {retain: false});
   }
 
+  public static async publishAbortUpdateMessage(container: any, client: any) {
+    if (typeof container == "string") {
+      container = DockerService.docker.getContainer(container).inspect();
+    }
+
+    const image = container.Config.Image.split(":")[0];
+    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+
+    // Update entity payload
+    const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+    let updatePayload: any;
+
+    updatePayload = {
+      update_percentage: null,
+      in_progress: false,
+    }
+
+    await this.publishMessage(client, updateTopic, updatePayload, {retain: false});
+  }
+
   /**
    * Publish update messages to MQTT
    * @param container

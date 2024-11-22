@@ -190,6 +190,7 @@ const containerEventHandler = _.debounce((eventName: string, data: { containerNa
   logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
+// TODO: Improve this by not checking all containers every time
 DockerService.events.on('create', (data) => {
   containerEventHandler('created', data);
   checkAndPublishContainerMessages();
@@ -206,11 +207,18 @@ DockerService.events.on('die', (data) => {
 });
 
 
-const exitHandler = (exitCode: number, error?: any) => {
-  HomeassistantService.publishAvailability(client, false);
+const exitHandler = async (exitCode: number, error?: any) => {
+  await HomeassistantService.publishAvailability(client, false);
+  const updatingContainers = DockerService.updatingContainers;
+
+  if (updatingContainers.length > 0) {
+    logger.warn(`Stopping MqDockerUp while updating containers: ${updatingContainers.join(", ")}`);
+    for (const containerId of updatingContainers) {
+      await HomeassistantService.publishAbortUpdateMessage(containerId, client);
+    }
+  }
 
   let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
-
 
   if (error) {
     logger.error(message);
