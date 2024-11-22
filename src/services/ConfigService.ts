@@ -40,7 +40,7 @@ export default class ConfigService {
       // Define the default values
       const defaults = {
         main: {
-          interval: "",
+          interval: "", // Deprecated in next version in favor of containerCheckInterval
           imageUpdateInterval: "",
           containerCheckInterval: "5m",
           updateCheckInterval: "",
@@ -109,10 +109,10 @@ export default class ConfigService {
         }
       }
 
-      // Deprecation Start-------------------------------------------------------------------------------------------------------------------------------------------------------
+      // #region "Deprecation Messages"
 
       if (config.main["interval"] !== undefined) {
-        logger.warn("Attention `main.interval`/`MAIN_INTERVAL` is in deprecation, instead use `main.containerCheckInterval`/`MAIN_CONTAINERCHECKINTERVAL`.");
+        logger.warn("The property `main.interval` is deprecated, please use `main.containerCheckInterval` instead.");
         if (config.main["containerCheckInterval"] === undefined) {
           config.main["containerCheckInterval"] = config.main["interval"];
         }
@@ -120,14 +120,14 @@ export default class ConfigService {
       }
 
       if (config.main["imageUpdateInterval"] !== undefined) {
-        logger.warn("Attention `main.imageUpdateInterval`/`MAIN_IMAGEUPDATEINTERVAL` is in deprecation, instead use `main.updateCheckInterval`/`MAIN_UPDATECHECKINTERVAL`.");
+        logger.warn("The property `main.imageUpdateInterval` is deprecated, please use `main.updateCheckInterval` instead.");
         if (config.main["updateCheckInterval"] === undefined) {
           config.main["updateCheckInterval"] = config.main["imageUpdateInterval"];
         }
 
       }
 
-      // Deprecation End---------------------------------------------------------------------------------------------------------------------------------------------------------
+      // #endregion "Deprecation"
 
       // Sync intervals if updateCheckInterval is empty
       if (config.main["updateCheckInterval"] === undefined || config.main["updateCheckInterval"] == "") {
