@@ -191,8 +191,7 @@ export default class DockerService {
             await container.stop();
             await container.remove();
 
-            const newContainer =
-              await DockerService.docker.createContainer(containerConfig);
+            const newContainer = await DockerService.docker.createContainer(containerConfig);
             await newContainer.start();
 
             DockerService.docker
@@ -220,9 +219,7 @@ export default class DockerService {
               totalProgress += current;
               totalSize += total;
 
-              const percentage = Math.round(
-                (totalProgress / totalSize) * 100
-              );
+              const percentage = Math.round((totalProgress / totalSize) * 100);
 
               // Print percentage
               logger.debug(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
