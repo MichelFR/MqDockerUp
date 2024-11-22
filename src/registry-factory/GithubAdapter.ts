@@ -2,11 +2,13 @@ import ConfigService from "../services/ConfigService";
 import logger from "../services/LoggerService";
 import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
 
+const config = ConfigService.getConfig();
+
 export class GithubAdapter extends ImageRegistryAdapter {
     private tag: string;
 
     constructor(image: string, tag: string = 'latest') {
-        const accessToken =  ConfigService.getConfig()?.accessTokens?.github;
+        const accessToken =  config?.accessTokens?.github;
 
         super(image, accessToken);
         this.tag = tag;
@@ -41,7 +43,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
     }
 
     async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
-        const accessTokenSet = !!ConfigService.getConfig()?.accessTokens?.github;
+        const accessTokenSet = !!config?.accessTokens?.github;
         if (accessTokenSet) {
             try {
                 this.http.defaults.headers['Accept'] = 'application/vnd.oci.image.index.v1+json';

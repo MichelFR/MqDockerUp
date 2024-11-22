@@ -1,8 +1,9 @@
 import Docker from "dockerode";
 import { ContainerInspectInfo } from "dockerode";
 import { EventEmitter } from 'events';
-import logger from "../services/LoggerService";
 import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
+import logger from "./LoggerService";
+import IgnoreService from "./IgnoreService";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -48,6 +49,10 @@ export default class DockerService {
     });
   }
 
+
+  
+
+
   /**
    * Returns a list of inspect information for all containers.
    *
@@ -57,7 +62,9 @@ export default class DockerService {
     const containers = await DockerService.docker.listContainers({ all: true });
 
     return Promise.all(
-      containers.map(async (container) => {
+      containers.filter((container) => { 
+        return !(IgnoreService.ignoreContainer(container)) 
+      }).map(async (container) => {
         const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
         return containerInfo;
       })
