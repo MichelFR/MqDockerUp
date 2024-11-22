@@ -4,6 +4,8 @@ import { EventEmitter } from 'events';
 import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
 import logger from "./LoggerService";
 import IgnoreService from "./IgnoreService";
+import HomeassistantService from "./HomeassistantService";
+import {mqttClient} from "../index";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -199,28 +201,28 @@ export default class DockerService {
                   logger.info("Old image removed successfully");
                 }
             });
-            
+
+            HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
             return newContainer;
           },
           function (event) {
             logger.info(`Status: ${event.status}`);
             // check if progressDetail exists
             if (event.progressDetail) {
-              // const current = event.progressDetail.current || 0;
-              // const total = event.progressDetail.total || 0;
+              const current = event.progressDetail.current || 0;
+              const total = event.progressDetail.total || 0;
 
-              //  total progress and size
-              // totalProgress += current;
-              // totalSize += total;
+               // total progress and size
+              totalProgress += current;
+              totalSize += total;
 
-              // const percentage = Math.round((totalProgress / totalSize) * 100);
+              const percentage = Math.round((totalProgress / totalSize) * 100);
 
               // print percentage
-              // logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
+              logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
               // Send Progress to MQTT
-              // TODO: Needs to be fixed
-              // HomeassistantService.publishUpdateProgressMessage(info, client, percentage, totalSize - totalProgress, event.status, false);
+              HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
             }
           }
         );
