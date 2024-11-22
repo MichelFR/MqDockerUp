@@ -356,8 +356,6 @@ export default class HomeassistantService {
       updatePayload.in_progress = in_progress;
     }
 
-    logger.info(updatePayload);
-
     this.publishMessage(client, updateTopic, updatePayload, {retain: false});
   }
 
