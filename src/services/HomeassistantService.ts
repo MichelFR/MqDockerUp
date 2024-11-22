@@ -351,7 +351,7 @@ export default class HomeassistantService {
       in_progress: false,
     }
 
-    if (update_percentage !== null && in_progress) {
+    if (update_percentage && in_progress) {
       updatePayload.update.update_percentage = update_percentage;
       updatePayload.update.in_progress = in_progress;
     }
