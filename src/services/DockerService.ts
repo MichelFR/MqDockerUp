@@ -1,9 +1,11 @@
 import Docker from "dockerode";
-import { ContainerInspectInfo } from "dockerode";
-import { EventEmitter } from 'events';
-import { ImageRegistryAdapterFactory } from "../registry-factory/ImageRegistryAdapterFactory";
+import {ContainerInspectInfo} from "dockerode";
+import {EventEmitter} from 'events';
+import {ImageRegistryAdapterFactory} from "../registry-factory/ImageRegistryAdapterFactory";
 import logger from "./LoggerService";
 import IgnoreService from "./IgnoreService";
+import HomeassistantService from "./HomeassistantService";
+import {mqttClient} from "../index";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -11,6 +13,7 @@ import IgnoreService from "./IgnoreService";
 export default class DockerService {
   public static docker = new Docker();
   public static events = new EventEmitter();
+  public static updatingContainers: string[] = [];
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
@@ -34,7 +37,7 @@ export default class DockerService {
             case 'start':
             case 'die':
               logger.debug(`${event.Action}: ${containerName}`);
-              DockerService.events.emit(event.Action, { containerName, containerId });
+              DockerService.events.emit(event.Action, {containerName, containerId});
               break;
             default:
               logger.debug(`${event.Action}: ${containerName}`);
@@ -50,20 +53,17 @@ export default class DockerService {
   }
 
 
-  
-
-
   /**
    * Returns a list of inspect information for all containers.
    *
    * @returns A promise that resolves to an array of `ContainerInspectInfo`.
    */
   public static async listContainers(): Promise<ContainerInspectInfo[]> {
-    const containers = await DockerService.docker.listContainers({ all: true });
+    const containers = await DockerService.docker.listContainers({all: true});
 
     return Promise.all(
-      containers.filter((container) => { 
-        return !(IgnoreService.ignoreContainer(container)) 
+      containers.filter((container) => {
+        return !(IgnoreService.ignoreContainer(container))
       }).map(async (container) => {
         const containerInfo = await DockerService.docker.getContainer(container.Id).inspect();
         return containerInfo;
@@ -148,22 +148,25 @@ export default class DockerService {
       const image = info.Config.Image;
       const imageName = image.split(":")[0];
 
-      // Catch the case if its trying to update MqDockerUp itself
+      // Catch the case if it's trying to update MqDockerUp itself
       if (imageName.toLowerCase() === "mqdockerup") {
-        console.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
+        logger.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
         return;
       }
 
       let totalProgress = 0;
       let totalSize = 0;
-      let lastProgressEvent = { progressDetail: { current: 0, total: 0 } };
+      let lastPublishTime = 0;
 
       await DockerService.docker.pull(image, async (err: any, stream: any) => {
         if (err) {
           logger.error("Pulling Error: " + err);
           return;
         }
-        // use modem.followProgress to get progress events
+
+        this.updatingContainers.push(containerId);
+
+        // Use modem.followProgress to get progress events
         DockerService.docker.modem.followProgress(
           stream,
           async (err: any, output: any) => {
@@ -183,7 +186,9 @@ export default class DockerService {
             };
 
             const mounts = info.Mounts;
-            const binds = mounts.map((mount) => `${mount.Source}:${mount.Destination}`);
+            const binds = mounts.map(
+              (mount) => `${mount.Source}:${mount.Destination}`
+            );
             containerConfig.HostConfig.Binds = binds;
 
             await container.stop();
@@ -192,42 +197,50 @@ export default class DockerService {
             const newContainer = await DockerService.docker.createContainer(containerConfig);
             await newContainer.start();
 
-            DockerService.docker.getImage(oldImageId).remove({ force: true }, (err, data) => {
+            DockerService.docker
+              .getImage(oldImageId)
+              .remove({force: true}, (err, data) => {
                 if (err) {
                   logger.error("Error removing old image: " + err);
                 } else {
                   logger.info("Old image removed successfully");
                 }
-            });
-            
+              });
+
+            HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
+            this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
+
             return newContainer;
           },
           function (event) {
-            logger.info(`Status: ${event.status}`);
-            // check if progressDetail exists
+            logger.debug(`Status: ${event.status}`);
+
+            // Check if progressDetail exists
             if (event.progressDetail) {
-              // const current = event.progressDetail.current || 0;
-              // const total = event.progressDetail.total || 0;
+              const current = event.progressDetail.current || 0;
+              const total = event.progressDetail.total || 0;
 
-              //  total progress and size
-              // totalProgress += current;
-              // totalSize += total;
+              // Update total progress and size
+              totalProgress += current;
+              totalSize += total;
 
-              // const percentage = Math.round((totalProgress / totalSize) * 100);
+              const percentage = Math.round((totalProgress / totalSize) * 100);
 
-              // print percentage
-              // logger.info(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
+              // Print percentage
+              logger.debug(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
 
-              // Send Progress to MQTT
-              // TODO: Needs to be fixed
-              // HomeassistantService.publishUpdateProgressMessage(info, client, percentage, totalSize - totalProgress, event.status, false);
+              // Send Progress to MQTT with debounce
+              const now = Date.now();
+              if (now - lastPublishTime >= 1000) {
+                lastPublishTime = now;
+                HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
+              }
             }
           }
         );
       });
-    }
-    catch(error:any) {
-      logger.error('Error updating container');
+    } catch (error: any) {
+      logger.error("Error updating container");
       logger.error(error);
     }
   }
@@ -315,7 +328,7 @@ export default class DockerService {
    * TODO: Change to check if container is running by using the container id instead of the image name
    */
   public static async checkIfContainerExists(containerImage: string): Promise<boolean> {
-    return DockerService.docker.listContainers({ all: true }).then((containers) => {
+    return DockerService.docker.listContainers({all: true}).then((containers) => {
       const imageWithoutTag = containerImage.replace(/:.*/, "");
       const imageWithAnyTag = new RegExp(`^${imageWithoutTag}(:.*)?$`);
 

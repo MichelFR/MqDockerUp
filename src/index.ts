@@ -19,6 +19,8 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
 });
 logger.level = ConfigService?.getConfig()?.logs?.level;
 
+export const mqttClient = client;
+
 // Check for new/old containers and publish updates
 const checkAndPublishContainerMessages = async (): Promise<void> => {
   logger.info("Checking for removed containers...");
@@ -188,6 +190,7 @@ const containerEventHandler = _.debounce((eventName: string, data: { containerNa
   logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
+// TODO: Improve this by not checking all containers every time
 DockerService.events.on('create', (data) => {
   containerEventHandler('created', data);
   checkAndPublishContainerMessages();
@@ -204,22 +207,40 @@ DockerService.events.on('die', (data) => {
 });
 
 
-const exitHandler = (exitCode: number, error?: any) => {
-  HomeassistantService.publishAvailability(client, false);
-
-  const now = new Date().toLocaleString();
-  let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
-
-
-  if (error) {
-    logger.error(message);
-    logger.error(typeof error);
-    logger.error(error.stack);
-  } else {
-    logger.info(message);
+let isExiting = false;
+const exitHandler = async (exitCode: number, error?: any) => {
+  if (isExiting) {
+    return;
   }
+  isExiting = true;
 
-  process.exit(exitCode);
+  try {
+    await HomeassistantService.publishAvailability(client, false);
+    const updatingContainers = DockerService.updatingContainers;
+
+    if (updatingContainers.length > 0) {
+      logger.warn(
+        `Stopping MqDockerUp while updating containers: ${updatingContainers.join(", ")}`
+      );
+      for (const containerId of updatingContainers) {
+        await HomeassistantService.publishAbortUpdateMessage(containerId, client);
+      }
+    }
+
+    let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
+
+    if (error) {
+      logger.error(message);
+      logger.error(typeof error);
+      logger.error(error.stack);
+    } else {
+      logger.info(message);
+    }
+  } catch (e) {
+    logger.error("Error during exit handling:", e);
+  } finally {
+    process.exit(exitCode);
+  }
 };
 
 client.on("error", (error) => exitHandler(1, error));
