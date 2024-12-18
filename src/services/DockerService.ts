@@ -142,6 +142,8 @@ export default class DockerService {
    */
   public static async updateContainer(containerId: string) {
     try {
+      logger.info(`Updating container: ${containerId}`);
+
       const container = DockerService.docker.getContainer(containerId);
       const info = await container.inspect();
       const oldImageId = info.Image;
@@ -159,6 +161,7 @@ export default class DockerService {
       let lastPublishTime = 0;
 
       await DockerService.docker.pull(image, async (err: any, stream: any) => {
+        logger.info("Pulling image: " + image);
         if (err) {
           logger.error("Pulling Error: " + err);
           return;
@@ -207,7 +210,7 @@ export default class DockerService {
                 }
               });
 
-            HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
+            await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
             this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
 
             return newContainer;
