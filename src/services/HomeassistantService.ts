@@ -364,8 +364,13 @@ export default class HomeassistantService {
       container = DockerService.docker.getContainer(container).inspect();
     }
 
-    const image = container.Config.Image.split(":")[0];
-    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+    if (!container) {
+      logger.error(`ABORT: Failed to find container ${container}`);
+      return;
+    }
+
+    const image = container?.Config?.Image?.split(":")[0];
+    const formatedImage = image?.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     // Update entity payload
     const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
