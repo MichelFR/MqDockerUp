@@ -87,6 +87,17 @@ The access tokens configuration is specified in the `accessTokens` section of `c
 | `dockerhub` | `ACCESSTOKENS_DOCKERHUB` | `string` |  `""`   | The Dockerhub token, used to avoid the limitations of the DockerHub API _‼️Still Work In Progress_. |
 |    `github` |  `ACCESSTOKENS_GITHUB`   | `string` |  `""`   | The Github token, used to manage images on GitHub (`ghcr.io`) _⚠️Needed for this type of images_.   |
 
+> [!NOTE]
+>**To setup GitHub access token:**
+>
+>Setup a [Fine-grained personal access token](https://github.com/settings/personal-access-tokens) with the following permissions:
+> - Repository Access -> All repositories
+> - Repository Permissions (Read-Only):
+>   - Commit Statuses
+>   - Contents
+>   - Merge queues
+>   - Metadata
+>   - Pull requests
 
 ### Ignore Configuration
 
