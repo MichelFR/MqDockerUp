@@ -71,55 +71,55 @@ export default class HomeassistantService {
 
       // Container Id
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_id/config`;
-      payload = this.createPayload("Container ID", image, tag, "dockerId", deviceName, null, "mdi:key-variant");
+      payload = this.createPayload("Container ID", image, tag, "dockerId", deviceName, null, "mdi:key-variant", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Name
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_name/config`;
-      payload = this.createPayload("Container Name", image, tag, "dockerName", deviceName, null, "mdi:label");
+      payload = this.createPayload("Container Name", image, tag, "dockerName", deviceName, null, "mdi:label", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Status
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_status/config`;
-      payload = this.createPayload("Container Status", image, tag, "dockerStatus", deviceName, null, "mdi:checkbox-marked-circle");
+      payload = this.createPayload("Container Status", image, tag, "dockerStatus", deviceName, null, "mdi:checkbox-marked-circle", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Uptime
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_uptime/config`;
-      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", deviceName, "timestamp", "mdi:timer-sand");
+      payload = this.createPayload("Container Uptime", image, tag, "dockerUptime", deviceName, "timestamp", "mdi:timer-sand", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Created
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_created/config`;
-      payload = this.createPayload("Container Created", image, tag, "dockerCreated", deviceName, "timestamp", "mdi:calendar-clock");
+      payload = this.createPayload("Container Created", image, tag, "dockerCreated", deviceName, "timestamp", "mdi:calendar-clock", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Restart Count
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_restart_count/config`;
-      payload = this.createPayload("Container Restart Count", image, tag, "dockerRestartCount", deviceName, null, "mdi:restart");
+      payload = this.createPayload("Container Restart Count", image, tag, "dockerRestartCount", deviceName, null, "mdi:restart", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Restart Policy
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_restart_policy/config`;
-      payload = this.createPayload("Container Restart Policy", image, tag, "dockerRestartPolicy", deviceName, null, "mdi:restart");
+      payload = this.createPayload("Container Restart Policy", image, tag, "dockerRestartPolicy", deviceName, null, "mdi:restart", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Health
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_health/config`;
-      payload = this.createPayload("Container Health", image, tag, "dockerHealth", deviceName, null, "mdi:heart-pulse");
+      payload = this.createPayload("Container Health", image, tag, "dockerHealth", deviceName, null, "mdi:heart-pulse", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Container Ports
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_ports/config`;
-      payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", deviceName, null, "mdi:lan-connect");
+      payload = this.createPayload("Exposed Ports", image, tag, "dockerPorts", deviceName, null, "mdi:lan-connect", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
@@ -127,7 +127,7 @@ export default class HomeassistantService {
       topic = `${discoveryPrefix}/button/${topicName}/docker_manual_restart/config`;
       payload = {
         name: "Manual Restart",
-        unique_id: `${image}_${tag}_manual_restart`,
+        unique_id: prefix ? `${prefix}/${image}_${tag}_manual_restart`:`${image}_${tag}_manual_restart`,
         command_topic: `${config.mqtt.topic}/restart`,
         command_template: JSON.stringify({containerId: container.Id}),
         availability: {
@@ -149,19 +149,19 @@ export default class HomeassistantService {
 
       // Docker Image
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_image/config`;
-      payload = this.createPayload("Docker Image", image, tag, "dockerImage", deviceName, null, "mdi:image");
+      payload = this.createPayload("Docker Image", image, tag, "dockerImage", deviceName, null, "mdi:image", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Tag
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_tag/config`;
-      payload = this.createPayload("Docker Tag", image, tag, "dockerTag", deviceName, null, "mdi:tag");
+      payload = this.createPayload("Docker Tag", image, tag, "dockerTag", deviceName, null, "mdi:tag", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
       // Docker Registry
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_registry/config`;
-      payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", deviceName, null, "mdi:database");
+      payload = this.createPayload("Docker Registry", image, tag, "dockerRegistry", deviceName, null, "mdi:database", prefix);
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
