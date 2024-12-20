@@ -150,14 +150,14 @@ export default class DockerService {
       const image = info.Config.Image;
       const imageName = image.split(":")[0];
 
-      // Catch the case if it's trying to update MqDockerUp itself
+      // Prevent updating MqDockerUp from itself
       if (imageName.toLowerCase() === "mqdockerup") {
         logger.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
         return;
       }
 
-      let totalProgress = 0;
-      let totalSize = 0;
+      // Store layer progress here
+      const layerProgress: Record<string, { current: number; total: number }> = {};
       let lastPublishTime = 0;
 
       await DockerService.docker.pull(image, async (err: any, stream: any) => {
@@ -169,7 +169,6 @@ export default class DockerService {
 
         this.updatingContainers.push(containerId);
 
-        // Use modem.followProgress to get progress events
         DockerService.docker.modem.followProgress(
           stream,
           async (err: any, output: any) => {
@@ -179,6 +178,7 @@ export default class DockerService {
             }
 
             logger.info("Image pulled successfully");
+
             const containerConfig: any = {
               ...info,
               ...info.Config,
@@ -194,15 +194,16 @@ export default class DockerService {
             );
             containerConfig.HostConfig.Binds = binds;
 
+            // Restart the container with the new image
             await container.stop();
             await container.remove();
-
             const newContainer = await DockerService.docker.createContainer(containerConfig);
             await newContainer.start();
 
+            // Remove old image
             DockerService.docker
               .getImage(oldImageId)
-              .remove({force: true}, (err, data) => {
+              .remove({ force: true }, (err, data) => {
                 if (err) {
                   logger.error("Error removing old image: " + err);
                 } else {
@@ -210,33 +211,36 @@ export default class DockerService {
                 }
               });
 
+            // Publish final 100% progress
             await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
             this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
 
             return newContainer;
           },
-          function (event) {
+          (event) => {
             logger.debug(`Status: ${event.status}`);
 
-            // Check if progressDetail exists
-            if (event.progressDetail) {
-              const current = event.progressDetail.current || 0;
-              const total = event.progressDetail.total || 0;
+            if (event.progressDetail && event.id) {
+              // Update the layer progress
+              layerProgress[event.id] = {
+                current: event.progressDetail.current || 0,
+                total: event.progressDetail.total || 0,
+              };
 
-              // Update total progress and size
-              totalProgress += current;
-              totalSize += total;
+              // Recalculate total progress
+              const totalCurrent = Object.values(layerProgress).reduce((acc, layer) => acc + layer.current, 0);
+              const totalSize = Object.values(layerProgress).reduce((acc, layer) => acc + layer.total, 0);
 
-              const percentage = Math.round((totalProgress / totalSize) * 100);
+              if (totalSize > 0) {
+                const percentage = Math.round((totalCurrent / totalSize) * 100);
+                logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
 
-              // Print percentage
-              logger.debug(`Total progress: ${totalProgress}/${totalSize} (${percentage}%)`);
-
-              // Send Progress to MQTT with debounce
-              const now = Date.now();
-              if (now - lastPublishTime >= 1000) {
-                lastPublishTime = now;
-                HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
+                // Publish progress updates with a debounce (e.g., every 1 second)
+                const now = Date.now();
+                if (now - lastPublishTime >= 1000) {
+                  lastPublishTime = now;
+                  HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
+                }
               }
             }
           }
@@ -247,6 +251,7 @@ export default class DockerService {
       logger.error(error);
     }
   }
+
 
   /**
    * Stops a Docker container.
