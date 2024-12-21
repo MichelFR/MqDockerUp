@@ -270,10 +270,10 @@ export default class HomeassistantService {
     const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
 
     return {
-      object_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
+      object_id: (prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_` : ``)+`${image} ${name}`,
       name: `${name}`,
-      unique_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
-      state_topic: `${config.mqtt.topic}/`+(prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}`,
+      unique_id: (prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_` : ``)+`${image} ${name}`,
+      state_topic: `${config.mqtt.topic}/`+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}`,
       device_class: deviceClass,
       value_template: `{{ value_json.${valueName} }}`,
       availability:
@@ -309,9 +309,9 @@ export default class HomeassistantService {
     const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
 
     return {
-      object_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
+      object_id: (prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_` : ``)+`${image} ${name}`,
       name: `${name}`,
-      unique_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
+      unique_id: (prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_` : ``)+`${image} ${name}`,
       state_topic: `${config.mqtt.topic}/`+(prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`,
       device_class: "firmware",
       availability: [
@@ -350,12 +350,11 @@ export default class HomeassistantService {
 
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
-    const prefix = config?.main.prefix || "";
     const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
     const containerName = `${container.Name.substring(1)}`;
 
     // Update entity payload
-    const updateTopic = `${config.mqtt.topic}/`+(prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`;
+    const updateTopic = `${config.mqtt.topic}/`+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`;
     let updatePayload: any;
 
     updatePayload = {
@@ -383,12 +382,11 @@ export default class HomeassistantService {
 
     const image = container?.Config?.Image?.split(":")[0];
     const formatedImage = image?.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
-    const prefix = config?.main.prefix || "";
     const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
     const containerName = `${container.Name.substring(1)}`;
 
     // Update entity payload
-    const updateTopic = `${config.mqtt.topic}/`+(prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`;
+    const updateTopic = `${config.mqtt.topic}/`+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`;
     let updatePayload: any;
 
     updatePayload = {
@@ -411,7 +409,6 @@ export default class HomeassistantService {
 
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
-    const prefix = config?.main.prefix || "";
     const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
@@ -440,7 +437,7 @@ export default class HomeassistantService {
       }
 
       // Update entity payload
-      const updateTopic = `${config.mqtt.topic}/`+(prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`;
+      const updateTopic = `${config.mqtt.topic}/`+(appendContainterNameToTopic ? `${containerName}_`:``)+`${formatedImage}/update`;
       let updatePayload: any;
       if (haLegacy) {
         updatePayload = {
