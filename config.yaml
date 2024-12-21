@@ -3,6 +3,7 @@ main:
   containerCheckInterval: "5m"
   updateCheckInterval: ""
   prefix: ""
+  appendContainterNameToTopic: false
 
 # MQTT Configuration
 mqtt:
