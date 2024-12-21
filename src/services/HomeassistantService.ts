@@ -33,6 +33,7 @@ export default class HomeassistantService {
 
     for (const container of containers) {
       const prefix = config?.main.prefix || "";
+      const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
       const tag = container.Config.Image.split(":")[1] || "latest";
@@ -55,10 +56,14 @@ export default class HomeassistantService {
       let topicName: string = '';
       let deviceName = containerName;
 
-      if (!prefix) {
-        topicName = `${formatedImage}_${formatedTag}`;
+      if(appendContainterNameToTopic){
+        topicName = `${containerName}_${formatedImage}_${formatedTag}`;
       } else {
-        topicName = `${prefix}_${formatedImage}_${formatedTag}`;
+        topicName = `${formatedImage}_${formatedTag}`; 
+      }
+
+      if (prefix) {
+        topicName = `${prefix}_${topicName}`;
       }
 
       if (!prefix) {
@@ -127,7 +132,7 @@ export default class HomeassistantService {
       topic = `${discoveryPrefix}/button/${topicName}/docker_manual_restart/config`;
       payload = {
         name: "Manual Restart",
-        unique_id: prefix ? `${prefix}/${image}_${tag}_manual_restart`:`${image}_${tag}_manual_restart`,
+        unique_id: (prefix ? `${prefix}/`:``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${image}_${tag}_manual_restart`,
         command_topic: `${config.mqtt.topic}/restart`,
         command_template: JSON.stringify({containerId: container.Id}),
         availability: {
@@ -171,7 +176,7 @@ export default class HomeassistantService {
         topic = `${discoveryPrefix}/button/${topicName}/docker_manual_update/config`;
         payload = {
           name: "Manual Update",
-          unique_id: `${image}_${tag}_manual_update`,
+          unique_id: (prefix ? `${prefix}/`:``)+(appendContainterNameToTopic ? `${containerName}_`:``)+`${image}_${tag}_manual_update`,
           command_topic: `${config.mqtt.topic}/manualUpdate`,
           command_template: JSON.stringify({containerId: container.Id}),
           availability: {
@@ -254,6 +259,7 @@ export default class HomeassistantService {
     name: string,
     image: string,
     tag: string,
+    containerName: string | null,
     valueName: string,
     deviceName: string,
     deviceClass?: string | null,
@@ -263,9 +269,9 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      object_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
       name: `${name}`,
-      unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      unique_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
       device_class: deviceClass,
       value_template: `{{ value_json.${valueName} }}`,
@@ -282,7 +288,7 @@ export default class HomeassistantService {
         name: deviceName,
         sw_version: packageJson.version,
         sa: "Docker",
-        identifiers: [`${image}_${tag}`],
+        identifiers: [`${image}_${tag}`, `${containerName}`],
       },
       icon: icon,
     };
@@ -292,6 +298,7 @@ export default class HomeassistantService {
     name: string,
     image: string,
     tag: string,
+    containerName: string,
     valueName: string,
     deviceName: string,
     containerId: any,
@@ -300,9 +307,9 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      object_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
       name: `${name}`,
-      unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      unique_id: (prefix ? `${prefix}/` : ``)+(containerName ? `${containerName}_` : ``)+`${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
       device_class: "firmware",
       availability: [
@@ -318,7 +325,7 @@ export default class HomeassistantService {
         name: deviceName,
         sw_version: packageJson.version,
         sa: "Docker",
-        identifiers: [`${image}_${tag}`],
+        identifiers: [`${image}_${tag}`, `${containerName}`],
       },
       icon: "mdi:arrow-up-bold-circle",
       entity_picture: "https://github.com/MichelFR/MqDockerUp/raw/main/assets/logo_200x200.png",
