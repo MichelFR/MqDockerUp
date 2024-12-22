@@ -33,7 +33,7 @@ export default class HomeassistantService {
 
     for (const container of containers) {
       const prefix = config?.main.prefix || "";
-      const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
+      const appendContainterNameToTopic = config?.main.appendContainterNameToTopic==="true";
       const image = container.Config.Image.split(":")[0];
       const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
       const tag = container.Config.Image.split(":")[1] || "latest";
@@ -267,7 +267,7 @@ export default class HomeassistantService {
     prefix: string = ""
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
-    const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
+    const appendContainterNameToTopic = config?.main.appendContainterNameToTopic==="true";
 
     return {
       object_id: (prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_` : ``)+`${image} ${name}`,
@@ -306,7 +306,7 @@ export default class HomeassistantService {
     prefix: string = ""
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
-    const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
+    const appendContainterNameToTopic = config?.main.appendContainterNameToTopic==="true";
 
     return {
       object_id: (prefix ? `${prefix}/` : ``)+(appendContainterNameToTopic ? `${containerName}_` : ``)+`${image} ${name}`,
@@ -409,7 +409,7 @@ export default class HomeassistantService {
 
     const image = container.Config.Image.split(":")[0];
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
-    const appendContainterNameToTopic = config?.main.appendContainterNameToTopic || false;
+    const appendContainterNameToTopic = config?.main.appendContainterNameToTopic==="true";
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
     const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
