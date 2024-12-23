@@ -45,7 +45,7 @@ export default class ConfigService {
           containerCheckInterval: "5m",
           updateCheckInterval: "",
           prefix: "",
-          appendContainterNameToTopic: false,
+          appendContainerNameToTopic: false,
         },
         mqtt: {
           connectionUri: "mqtt://localhost:1883",
