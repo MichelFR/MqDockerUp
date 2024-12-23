@@ -5,8 +5,6 @@ import logger from "./LoggerService"
 import {ContainerInspectInfo, ContainerInfo} from "dockerode";
 import IgnoreService from "./IgnoreService";
 
-import yaml from "yaml";
-
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
 
@@ -42,8 +40,6 @@ export default class HomeassistantService {
       const formatedTag = tag.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "-");
       const containerName = `${container.Name.substring(1)}`;
       let containerIsInDb = false;
-      logger.info(`appendContainerNameToTopic is ${appendContainerNameToTopic}`);
-      logger.info(yaml.stringify(config?.main));
 
       await DatabaseService.containerExists(container.Id).then((exists) => {
         containerIsInDb = exists;
