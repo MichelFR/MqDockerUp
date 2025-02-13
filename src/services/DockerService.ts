@@ -194,28 +194,34 @@ export default class DockerService {
             );
             containerConfig.HostConfig.Binds = binds;
 
-            // Restart the container with the new image
-            await container.stop();
-            await container.remove();
-            const newContainer = await DockerService.docker.createContainer(containerConfig);
-            await newContainer.start();
+            try {
+              // Restart the container with the new image
+              await container.stop();
+              await container.remove();
+              const newContainer = await DockerService.docker.createContainer(containerConfig);
+              await newContainer.start();
 
-            // Remove old image
-            DockerService.docker
-              .getImage(oldImageId)
-              .remove({ force: true }, (err, data) => {
-                if (err) {
-                  logger.error("Error removing old image: " + err);
-                } else {
-                  logger.info("Old image removed successfully");
-                }
-              });
+              // Remove old image
+              DockerService.docker
+                .getImage(oldImageId)
+                .remove({ force: true }, (err, data) => {
+                  if (err) {
+                    logger.error("Error removing old image: " + err);
+                  } else {
+                    logger.info("Old image removed successfully");
+                  }
+                });
 
-            // Publish final 100% progress
-            await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
-            this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
+              // Publish final 100% progress
+              await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
+              this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
 
-            return newContainer;
+              return newContainer;
+            } catch (error) {
+              logger.error("Error restarting container with new image");
+              logger.error(error);
+              throw error;
+            }
           },
           (event) => {
             logger.debug(`Status: ${event.status}`);
