@@ -206,6 +206,54 @@ DockerService.events.on('die', (data) => {
   checkAndPublishContainerMessages();
 });
 
+// when health status changes
+DockerService.events.on('health_status', (data) => {
+  containerEventHandler('health_status', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is stopped
+DockerService.events.on('stop', (data) => {
+  containerEventHandler('stopped', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is removed
+DockerService.events.on('destroy', (data) => {
+  containerEventHandler('destroyed', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is renamed
+DockerService.events.on('rename', (data) => {
+  containerEventHandler('renamed', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is updated
+DockerService.events.on('update', (data) => {
+  containerEventHandler('updated', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is paused
+DockerService.events.on('pause', (data) => {
+  containerEventHandler('paused', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is unpaused
+DockerService.events.on('unpause', (data) => {
+  containerEventHandler('unpaused', data);
+  checkAndPublishContainerMessages();
+});
+
+// when container is restarted
+DockerService.events.on('restart', (data) => {
+  containerEventHandler('restarted', data);
+  checkAndPublishContainerMessages();
+});
+
 
 let isExiting = false;
 const exitHandler = async (exitCode: number, error?: any) => {
