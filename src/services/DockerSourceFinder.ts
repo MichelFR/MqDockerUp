@@ -5,6 +5,7 @@ import logger from "./LoggerService";
 
 export default class DockerSourceFinder {
   public static docker = new Docker();
+  private static cache = new Map<string, string>();
 
   constructor() {
     DockerSourceFinder.docker = new Docker();
@@ -36,10 +37,17 @@ export default class DockerSourceFinder {
   }
 
   async findSourceRepo(imageName: string) {
+    // Check cache first
+    if (DockerSourceFinder.cache.has(imageName)) {
+      return DockerSourceFinder.cache.get(imageName);
+    }
+
     // Try method 1: Check Docker labels
     const labels = await this.getImageLabels(imageName);
     if (labels && labels["org.opencontainers.image.source"]) {
-      return labels["org.opencontainers.image.source"];
+      const url = labels["org.opencontainers.image.source"];
+      DockerSourceFinder.cache.set(imageName, url);
+      return url;
     }
 
     // Try method 2: Check Docker Hub API
@@ -56,7 +64,11 @@ export default class DockerSourceFinder {
             const githubUrl = fullDescription
               .slice(startIndex, endIndex)
               .replace("[github]", "");
-            return this.parseGithubUrl(githubUrl);
+            const url = this.parseGithubUrl(githubUrl);
+            if (url !== null) {
+              DockerSourceFinder.cache.set(imageName, url);
+            }
+            return url;
           }
         }
       }
@@ -78,6 +90,7 @@ export default class DockerSourceFinder {
         method: "HEAD",
       });
       if (response.ok) {
+        DockerSourceFinder.cache.set(imageName, potentialRepo);
         return potentialRepo;
       }
     }
