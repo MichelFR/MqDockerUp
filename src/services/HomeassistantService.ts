@@ -1,5 +1,6 @@
 import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
+import DockerSourceFinder from "./DockerSourceFinder";
 import DatabaseService from "./DatabaseService";
 import logger from "./LoggerService"
 import {ContainerInspectInfo, ContainerInfo} from "dockerode";
@@ -423,6 +424,15 @@ export default class HomeassistantService {
 
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+      const finder = new DockerSourceFinder();
+      const sourceRepo = await finder.findSourceRepo(image);
+
+      if (sourceRepo) {
+        console.log(`Found source repository: ${sourceRepo}`);
+      } else {
+        console.log(`Could not find source repository for ${image}`);
+      }
+
       let updatePayload: any;
       if (haLegacy) {
         updatePayload = {
@@ -457,7 +467,7 @@ export default class HomeassistantService {
           installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
           latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
           release_summary: "",
-          release_url: "https://github.com/MichelFR/MqDockerUp",
+          release_url: `${sourceRepo}`,
           entity_picture: "https://raw.githubusercontent.com/MichelFR/MqDockerUp/refs/heads/main/assets/logo_200x200.png",
           title: `${image}:${tag}`,
           in_progress: false,
