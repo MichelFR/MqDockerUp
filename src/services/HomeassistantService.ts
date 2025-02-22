@@ -428,9 +428,9 @@ export default class HomeassistantService {
       const sourceRepo = await finder.findSourceRepo(image);
 
       if (sourceRepo) {
-        console.log(`Found source repository: ${sourceRepo}`);
+        logger.info(`Found source repository: ${sourceRepo}`);
       } else {
-        console.log(`Could not find source repository for ${image}`);
+        logger.warn(`Could not find source repository for ${image}`);
       }
 
       let updatePayload: any;
