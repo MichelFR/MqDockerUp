@@ -1,6 +1,7 @@
-const Docker = require("dockerode");
-const https = require("https");
+import Docker from "dockerode";
+import https from "https";
 import * as http from "http";
+import logger from "./LoggerService";
 
 export default class DockerSourceFinder {
   public static docker = new Docker();
@@ -15,7 +16,7 @@ export default class DockerSourceFinder {
       const inspect = await image.inspect();
       return inspect.Config.Labels;
     } catch (error: unknown) {
-      console.error(
+      logger.error(
         `Error accessing image ${imageName}:`,
         error instanceof Error ? error.message : String(error)
       );
@@ -60,7 +61,7 @@ export default class DockerSourceFinder {
         }
       }
     } catch (error: unknown) {
-      console.error(
+      logger.error(
         `Error checking Docker Hub API:`,
         error instanceof Error ? error.message : String(error)
       );
