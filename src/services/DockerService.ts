@@ -138,11 +138,17 @@ export default class DockerService {
     }
 
     // Try method 1: Check Docker labels
-    const labels = await DockerService.getImageLabels(imageName);
-    if (labels && labels["org.opencontainers.image.source"]) {
-      const url = labels["org.opencontainers.image.source"];
-      DockerService.SourceUrlCache.set(imageName, url);
-      return url;
+    try {
+      const labels = await DockerService.getImageInfo(imageName).then(
+        (info) => info.Config.Labels
+      );
+      if (labels && labels["org.opencontainers.image.source"]) {
+        const url = labels["org.opencontainers.image.source"];
+        DockerService.SourceUrlCache.set(imageName, url);
+        return url;
+      }
+    } catch (error: any) {
+      logger.error("Error accessing image labels:", error);
     }
 
     // Try method 2: Check Docker Hub API
@@ -181,23 +187,6 @@ export default class DockerService {
     }
 
     return null;
-  }
-
-  /**
-   * Gets the labels for the specified Docker image.
-   *
-   * @param imageName - The name of the Docker image.
-   * @returns A promise that resolves to an object containing the image labels.
-   */
-  public static async getImageLabels(imageName: string): Promise<any> {
-    try {
-      const image = DockerService.docker.getImage(imageName);
-      const inspect = await image.inspect();
-      return inspect.Config.Labels;
-    } catch (error: any) {
-      logger.error(`Error accessing image ${imageName}:`, error instanceof Error ? error.message : String(error));
-      return null;
-    }
   }
 
   /**
