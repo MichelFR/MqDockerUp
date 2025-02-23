@@ -139,51 +139,42 @@ export default class DockerService {
     }
 
     // Try method 1: Check Docker labels
-    try {
-      const labels = await DockerService.getImageInfo(imageName).then(
-        (info) => info.Config.Labels
+    const labels = await DockerService.getImageInfo(imageName).then(
+      (info) => info.Config.Labels
+    ).catch((error) => {
+      logger.error("Error getting image info:", error
       );
-      if (labels && labels["org.opencontainers.image.source"]) {
-        const url = labels["org.opencontainers.image.source"];
-        DockerService.SourceUrlCache.set(imageName, url);
-        return url;
-      }
-    } catch (error: any) {
-      logger.error("Error accessing image labels:", error);
+    });
+
+    if (labels && labels["org.opencontainers.image.source"]) {
+      const url = labels["org.opencontainers.image.source"];
+      DockerService.SourceUrlCache.set(imageName, url);
+      return url;
     }
 
     // Try method 2: Check Docker Hub API
-    try {
-      const dockerHubUrl = `https://hub.docker.com/v2/repositories/${imageName}`;
-      const response = await axios.get(dockerHubUrl);
-      if (response.status === 200) {
-        const data = response.data;
-        const fullDescription = data.full_description || "";
-        if (fullDescription.toLowerCase().includes("[github]")) {
-          const url = this.parseGithubUrl(fullDescription);
-          if (url !== null) {
-            DockerService.SourceUrlCache.set(imageName, url);
-            return url;
-          }
-        }
+    const dockerHubUrl = `https://hub.docker.com/v2/repositories/${imageName}`;
+    const response = await axios.get(dockerHubUrl).catch((error) => {
+      if (error.response.status === 404) {
+        logger.info(`Repository not found: ${imageName}`);
+      } else {
+        logger.error("Error accessing Docker Hub API:", error);
       }
-    } catch (error: any) {
-      logger.error("Error finding source repo for image:", error);
-    }
+    });
 
-    // Try method 3: URL pattern matching
-    const repoParts = imageName.split("/");
-    if (repoParts.length >= 2) {
-      const username = repoParts[0];
-      const repoName = repoParts[repoParts.length - 1].split(":")[0];
-      const potentialRepo = `github.com/${username}/${repoName}`;
+    if (response && response.status === 200) {
+      const data = response.data;
+      const fullDescription = data.full_description || "";
+      if (!fullDescription.toLowerCase().includes("[github]")) {
+        return null;
+      }
 
-      const response = await axios.get(`https://${potentialRepo}`, {
-        method: "HEAD",
-      });
-      if (response.status === 200) {
-        DockerService.SourceUrlCache.set(imageName, potentialRepo);
-        return potentialRepo;
+      const url = this.parseGithubUrl(fullDescription);
+
+      // Cache URL
+      if (url !== null) {
+        DockerService.SourceUrlCache.set(imageName, url);
+        return url;
       }
     }
 
