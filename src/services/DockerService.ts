@@ -5,6 +5,7 @@ import {ImageRegistryAdapterFactory} from "../registry-factory/ImageRegistryAdap
 import logger from "./LoggerService";
 import IgnoreService from "./IgnoreService";
 import HomeassistantService from "./HomeassistantService";
+import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
 
 /**
@@ -154,9 +155,9 @@ export default class DockerService {
     // Try method 2: Check Docker Hub API
     try {
       const dockerHubUrl = `https://hub.docker.com/v2/repositories/${imageName}`;
-      const response = await this.makeHttpsRequest(dockerHubUrl);
-      if (response.ok) {
-        const data = await response.json();
+      const response = await axios.get(dockerHubUrl);
+      if (response.status === 200) {
+        const data = response.data;
         const fullDescription = data.full_description || "";
         if (fullDescription.toLowerCase().includes("[github]")) {
           const url = this.parseGithubUrl(fullDescription);
@@ -177,10 +178,10 @@ export default class DockerService {
       const repoName = repoParts[repoParts.length - 1].split(":")[0];
       const potentialRepo = `github.com/${username}/${repoName}`;
 
-      const response = await this.makeHttpsRequest(`https://${potentialRepo}`, {
+      const response = await axios.get(`https://${potentialRepo}`, {
         method: "HEAD",
       });
-      if (response.ok) {
+      if (response.status === 200) {
         DockerService.SourceUrlCache.set(imageName, potentialRepo);
         return potentialRepo;
       }
@@ -412,19 +413,6 @@ export default class DockerService {
       const imageWithAnyTag = new RegExp(`^${imageWithoutTag}(:.*)?$`);
 
       return containers.some((container) => container.Image.match(imageWithAnyTag));
-    });
-  }
-
-  /**
-   * Makes an HTTPS request to the specified URL.
-   * @param url - The URL to make the request to.
-   * @param options - The options for the request.
-   * @returns A promise that resolves to the response.
-   */
-  public static async makeHttpsRequest(url: string, options: any = {}): Promise<Response> {
-    return fetch(url, {
-      method: options.method || "GET",
-      headers: options.headers || {},
     });
   }
 
