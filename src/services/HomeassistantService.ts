@@ -1,6 +1,5 @@
 import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
-import DockerSourceFinder from "./DockerSourceFinder";
 import DatabaseService from "./DatabaseService";
 import logger from "./LoggerService"
 import {ContainerInspectInfo, ContainerInfo} from "dockerode";
@@ -424,8 +423,7 @@ export default class HomeassistantService {
 
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
-      const finder = new DockerSourceFinder();
-      const sourceRepo = await finder.findSourceRepo(image);
+      const sourceRepo = await DockerService.getSourceRepo(image);
 
       if (sourceRepo) {
         logger.info(`Found source repository: ${sourceRepo}`);

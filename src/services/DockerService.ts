@@ -14,6 +14,7 @@ export default class DockerService {
   public static docker = new Docker();
   public static events = new EventEmitter();
   public static updatingContainers: string[] = [];
+  public static SourceUrlCache = new Map<string, string>();
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
@@ -122,6 +123,81 @@ export default class DockerService {
       return parts[0];
     }
     return null;
+  }
+
+  /**
+   * Gets the source repository for the specified Docker image.
+   * @param imageName - The name of the Docker image.
+   * @returns A promise that resolves to the source repository URL.
+   * @throws An error if the source repository could not be found.
+   */
+  public static async getSourceRepo(imageName: string): Promise<string | null> {
+    // Check cache first
+    if (DockerService.SourceUrlCache.has(imageName)) {
+      return DockerService.SourceUrlCache.get(imageName) ?? null;
+    }
+
+    // Try method 1: Check Docker labels
+    const labels = await DockerService.getImageLabels(imageName);
+    if (labels && labels["org.opencontainers.image.source"]) {
+      const url = labels["org.opencontainers.image.source"];
+      DockerService.SourceUrlCache.set(imageName, url);
+      return url;
+    }
+
+    // Try method 2: Check Docker Hub API
+    try {
+      const dockerHubUrl = `https://hub.docker.com/v2/repositories/${imageName}`;
+      const response = await this.makeHttpsRequest(dockerHubUrl);
+      if (response.ok) {
+        const data = await response.json();
+        const fullDescription = data.full_description || "";
+        if (fullDescription.toLowerCase().includes("[github]")) {
+          const url = this.parseGithubUrl(fullDescription);
+          if (url !== null) {
+            DockerService.SourceUrlCache.set(imageName, url);
+            return url;
+          }
+        }
+      }
+    } catch (error: any) {
+      logger.error("Error finding source repo for image:", error);
+    }
+
+    // Try method 3: URL pattern matching
+    const repoParts = imageName.split("/");
+    if (repoParts.length >= 2) {
+      const username = repoParts[0];
+      const repoName = repoParts[repoParts.length - 1].split(":")[0];
+      const potentialRepo = `github.com/${username}/${repoName}`;
+
+      const response = await this.makeHttpsRequest(`https://${potentialRepo}`, {
+        method: "HEAD",
+      });
+      if (response.ok) {
+        DockerService.SourceUrlCache.set(imageName, potentialRepo);
+        return potentialRepo;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Gets the labels for the specified Docker image.
+   *
+   * @param imageName - The name of the Docker image.
+   * @returns A promise that resolves to an object containing the image labels.
+   */
+  public static async getImageLabels(imageName: string): Promise<any> {
+    try {
+      const image = DockerService.docker.getImage(imageName);
+      const inspect = await image.inspect();
+      return inspect.Config.Labels;
+    } catch (error: any) {
+      logger.error(`Error accessing image ${imageName}:`, error instanceof Error ? error.message : String(error));
+      return null;
+    }
   }
 
   /**
@@ -348,6 +424,33 @@ export default class DockerService {
 
       return containers.some((container) => container.Image.match(imageWithAnyTag));
     });
+  }
+
+  /**
+   * Makes an HTTPS request to the specified URL.
+   * @param url - The URL to make the request to.
+   * @param options - The options for the request.
+   * @returns A promise that resolves to the response.
+   */
+  public static async makeHttpsRequest(url: string, options: any = {}): Promise<Response> {
+    return fetch(url, {
+      method: options.method || "GET",
+      headers: options.headers || {},
+    });
+  }
+
+  /**
+   * Parses a GitHub URL from a full description.
+   * @param fullDescription - The full description to parse.
+   * @returns The GitHub URL or `null` if it could not be parsed.
+   */
+  private static parseGithubUrl(fullDescription: string): string | null {
+    const startIndex = fullDescription.indexOf("[github");
+    const endIndex = fullDescription.indexOf("]", startIndex);
+    if (startIndex !== -1 && endIndex !== -1) {
+      return fullDescription.slice(startIndex, endIndex).replace("[github]", "");
+    }
+    return null;
   }
 }
 
