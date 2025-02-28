@@ -423,6 +423,14 @@ export default class HomeassistantService {
 
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+      const sourceRepo = await DockerService.getSourceRepo(image);
+
+      if (sourceRepo) {
+        logger.info(`Found source repository: ${sourceRepo}`);
+      } else {
+        logger.warn(`Could not find source repository for ${image}`);
+      }
+
       let updatePayload: any;
       if (haLegacy) {
         updatePayload = {
@@ -457,7 +465,7 @@ export default class HomeassistantService {
           installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
           latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
           release_summary: "",
-          release_url: "https://github.com/MichelFR/MqDockerUp",
+          release_url: `${sourceRepo ? sourceRepo : "https://github.com/MichelFR/MqDockerUp"}`,
           entity_picture: "https://raw.githubusercontent.com/MichelFR/MqDockerUp/refs/heads/main/assets/logo_200x200.png",
           title: `${image}:${tag}`,
           in_progress: false,
