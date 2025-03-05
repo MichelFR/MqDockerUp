@@ -5,6 +5,7 @@ import {ImageRegistryAdapterFactory} from "../registry-factory/ImageRegistryAdap
 import logger from "./LoggerService";
 import IgnoreService from "./IgnoreService";
 import HomeassistantService from "./HomeassistantService";
+import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
 
 /**
@@ -14,6 +15,7 @@ export default class DockerService {
   public static docker = new Docker();
   public static events = new EventEmitter();
   public static updatingContainers: string[] = [];
+  public static SourceUrlCache = new Map<string, string>();
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
@@ -121,6 +123,61 @@ export default class DockerService {
     if (parts.length >= 2) {
       return parts[0];
     }
+    return null;
+  }
+
+  /**
+   * Gets the source repository for the specified Docker image.
+   * @param imageName - The name of the Docker image.
+   * @returns A promise that resolves to the source repository URL.
+   * @throws An error if the source repository could not be found.
+   */
+  public static async getSourceRepo(imageName: string): Promise<string | null> {
+    // Check cache first
+    if (DockerService.SourceUrlCache.has(imageName)) {
+      return DockerService.SourceUrlCache.get(imageName) ?? null;
+    }
+
+    // Try method 1: Check Docker labels
+    const labels = await DockerService.getImageInfo(imageName).then(
+      (info) => info.Config.Labels
+    ).catch((error) => {
+      logger.error("Error getting image info:", error
+      );
+    });
+
+    if (labels && labels["org.opencontainers.image.source"]) {
+      const url = labels["org.opencontainers.image.source"];
+      DockerService.SourceUrlCache.set(imageName, url);
+      return url;
+    }
+
+    // Try method 2: Check Docker Hub API
+    const dockerHubUrl = `https://hub.docker.com/v2/repositories/${imageName}`;
+    const response = await axios.get(dockerHubUrl).catch((error) => {
+      if (error.response.status === 404) {
+        logger.info(`Repository not found: ${imageName}`);
+      } else {
+        logger.error("Error accessing Docker Hub API:", error);
+      }
+    });
+
+    if (response && response.status === 200) {
+      const data = response.data;
+      const fullDescription = data.full_description || "";
+      if (!fullDescription.toLowerCase().includes("[github]")) {
+        return null;
+      }
+
+      const url = this.parseGithubUrl(fullDescription);
+
+      // Cache URL
+      if (url !== null) {
+        DockerService.SourceUrlCache.set(imageName, url);
+        return url;
+      }
+    }
+
     return null;
   }
 
@@ -348,6 +405,20 @@ export default class DockerService {
 
       return containers.some((container) => container.Image.match(imageWithAnyTag));
     });
+  }
+
+  /**
+   * Parses a GitHub URL from a full description.
+   * @param fullDescription - The full description to parse.
+   * @returns The GitHub URL or `null` if it could not be parsed.
+   */
+  private static parseGithubUrl(fullDescription: string): string | null {
+    const startIndex = fullDescription.indexOf("[github");
+    const endIndex = fullDescription.indexOf("]", startIndex);
+    if (startIndex !== -1 && endIndex !== -1) {
+      return fullDescription.slice(startIndex, endIndex).replace("[github]", "");
+    }
+    return null;
   }
 }
 
