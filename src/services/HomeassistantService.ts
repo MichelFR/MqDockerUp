@@ -470,6 +470,18 @@ export default class HomeassistantService {
           title: `${image}:${tag}`,
           in_progress: false,
           update_percentage: null,
+          dockerImage: image,
+          dockerTag: tag,
+          dockerName: containerName,
+          dockerId: container.Id.substring(0, 12),
+          dockerStatus: container.State.Status,
+          dockerUptime: container.State.StartedAt,
+          dockerCreated: container.Created,
+          dockerRestartCount: container.RestartCount,
+          dockerRestartPolicy: container?.HostConfig?.RestartPolicy?.Name || "unknown",
+          dockerHealth: container.State.Health?.Status || "unknown",
+          dockerPorts: dockerPorts,
+          dockerRegistry: registry,
         };
 
         if (update_percentage !== null && remaining !== null) {
