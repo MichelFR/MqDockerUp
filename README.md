@@ -74,6 +74,7 @@ The MQTT configuration is specified in the `mqtt` section of `config.yaml`:
 |        `haLegacy` |    `MQTT_HALEGACY`     | `boolean` |         `false`         | The way MqDockerUp creates the update entity, `false` for HA 2024.11+ and `true` for previous versions. |
 |  `connectTimeout` | `MQTT_CONNECTTIMEOUT`  |   `int`   |          `60`           | The maximum time, in seconds, to wait for a successful connection to the MQTT broker.                   |
 | `protocolVersion` | `MQTT_PROTOCOLVERSION` |   `int`   |           `5`           | The MQTT protocol version to use when connecting to the broker.                                         |
+| `maxReconnectDelay` | `MQTT_MAXRECONNECTDELAY` | `int` |          `300`          | The maximum time, in seconds, between reconnection attempts when disconnected from the MQTT broker.     |
 
 
 

@@ -56,6 +56,7 @@ export default class ConfigService {
           haLegacy: false,
           connectTimeout: 60,
           protocolVersion: 5,
+          maxReconnectDelay: 300, // Maximum reconnect delay in seconds
         },
         accessTokens: {
           dockerhub: "",
