@@ -192,14 +192,103 @@ export default class DockerService {
   }
 
   /**
-   * Updates a Docker container with the latest image.
-   *
-   * @param containerId - The ID of the Docker container to update.
-   * @returns A promise that resolves to the new Docker container.
+   * Checks if a container is part of a Docker Compose project
+   * @param containerId The ID of the container to check
+   * @returns Object containing project name and service name if container is part of a compose project, null otherwise
    */
+  private static async getComposeInfo(containerId: string): Promise<{ projectName: string; serviceName: string } | null> {
+    try {
+      const container = DockerService.docker.getContainer(containerId);
+      const info = await container.inspect();
+      
+      // Docker Compose adds these labels to identify containers
+      const labels = info.Config.Labels || {};
+      const projectName = labels['com.docker.compose.project'];
+      const serviceName = labels['com.docker.compose.service'];
+      
+      if (projectName && serviceName) {
+        return { projectName, serviceName };
+      }
+      return null;
+    } catch (error) {
+      logger.error(`Error getting compose info for container ${containerId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Updates all containers in a Docker Compose project
+   * @param projectName The name of the Docker Compose project
+   */
+  public static async updateComposeProject(projectName: string): Promise<void> {
+    try {
+      logger.info(`Updating Docker Compose project: ${projectName}`);
+      
+      // List all containers in the project
+      const containers = await DockerService.listContainers();
+      const projectContainers = containers.filter(container => {
+        const containerInfo = container as any;
+        return containerInfo.Labels && containerInfo.Labels['com.docker.compose.project'] === projectName;
+      });
+
+      if (projectContainers.length === 0) {
+        logger.warn(`No containers found for project ${projectName}`);
+        return;
+      }
+
+      // Get the directory containing the compose file
+      const firstContainer = projectContainers[0] as any;
+      const composeDir = firstContainer.Labels['com.docker.compose.project.working_dir'];
+      if (!composeDir) {
+        throw new Error('Could not determine Docker Compose working directory');
+      }
+
+      // Pull new images for all services
+      for (const container of projectContainers) {
+        const containerInfo = container as any;
+        const image = containerInfo.Config.Image;
+        logger.info(`Pulling image for service ${containerInfo.Labels['com.docker.compose.service']}: ${image}`);
+        await DockerService.docker.pull(image);
+      }
+
+      // Run docker-compose up -d to update the containers
+      const { exec } = require('child_process');
+      await new Promise((resolve, reject) => {
+        exec('docker-compose up -d', { cwd: composeDir }, (error: any, stdout: any, stderr: any) => {
+          if (error) {
+            logger.error(`Error updating compose project: ${error.message}`);
+            reject(error);
+            return;
+          }
+          if (stderr) {
+            logger.warn(`Compose update warning: ${stderr}`);
+          }
+          logger.info(`Compose update output: ${stdout}`);
+          resolve(null);
+        });
+      });
+
+      logger.info(`Successfully updated Docker Compose project: ${projectName}`);
+    } catch (error) {
+      logger.error(`Error updating Docker Compose project ${projectName}:`, error);
+      throw error;
+    }
+  }
+
   public static async updateContainer(containerId: string) {
     try {
-      logger.info(`Updating container: ${containerId}`);
+      logger.info(`Checking container update type: ${containerId}`);
+
+      // Check if container is part of a compose project
+      const composeInfo = await DockerService.getComposeInfo(containerId);
+      if (composeInfo) {
+        logger.info(`Container ${containerId} is part of Docker Compose project ${composeInfo.projectName}`);
+        await DockerService.updateComposeProject(composeInfo.projectName);
+        return;
+      }
+
+      // If not a compose container, proceed with regular container update
+      logger.info(`Updating individual container: ${containerId}`);
 
       const container = DockerService.docker.getContainer(containerId);
       const info = await container.inspect();
