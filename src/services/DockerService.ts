@@ -8,6 +8,18 @@ import HomeassistantService from "./HomeassistantService";
 import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
 
+// Add interface for mount types
+interface DockerMount {
+  Name?: string;
+  Type: 'bind' | 'volume' | 'tmpfs';
+  Source: string;
+  Destination: string;
+  Driver?: string;
+  Mode: string;
+  RW: boolean;
+  Propagation: string;
+}
+
 /**
  * Represents a Docker service for managing Docker containers and images.
  */
@@ -334,11 +346,23 @@ export default class DockerService {
               Image: image,
             };
 
-            const mounts = info.Mounts;
-            const binds = mounts.map(
-              (mount) => `${mount.Source}:${mount.Destination}`
-            );
+            const mounts = info.Mounts as DockerMount[];
+            // Handle different mount types properly
+            const binds: string[] = [];
+            const volumes: { [key: string]: {} } = {};
+
+            mounts.forEach((mount) => {
+              if (mount.Type === 'bind') {
+                binds.push(`${mount.Source}:${mount.Destination}${mount.Mode ? ':' + mount.Mode : ''}`);
+              } else if (mount.Type === 'volume') {
+                // For named volumes, we just need to ensure they're in the volumes configuration
+                const volumeName = mount.Name || mount.Source;
+                volumes[volumeName] = {};
+              }
+            });
+
             containerConfig.HostConfig.Binds = binds;
+            containerConfig.Volumes = volumes;
 
             try {
               // Restart the container with the new image
