@@ -39,11 +39,6 @@ export const mqttClient = client;
 
 // Check for new/old containers and publish updates
 const checkAndPublishContainerMessages = async (): Promise<void> => {
-  if (!isConnected) {
-    logger.warn("MQTT client not connected. Skipping container check.");
-    return;
-  }
-  
   logger.info("Checking for removed containers...");
   const containers = await DockerService.listContainers();
   const runningContainerIds = containers.map(container => container.Id);
@@ -90,11 +85,6 @@ const checkAndPublishContainerMessages = async (): Promise<void> => {
 };
 
 const checkAndPublishImageUpdateMessages = async (): Promise<void> => {
-  if (!isConnected) {
-    logger.warn("MQTT client not connected. Skipping image update check.");
-    return;
-  }
-
   logger.info("Checking for image updates...");
   await HomeassistantService.publishImageUpdateMessages(client);
 
@@ -119,8 +109,6 @@ const startImageCheckingInterval = async () => {
 // Connected to MQTT broker
 client.on('connect', async function () {
   logger.info('MQTT client successfully connected');
-  isConnected = true;
-  reconnectCount = 0; // Reset reconnect counter on successful connection
 
   // Publish availability as online
   await HomeassistantService.publishAvailability(client, true);
@@ -147,29 +135,6 @@ client.on('connect', async function () {
 client.on('error', function (err) {
   logger.error('MQTT client connection error: ', err);
 });
-
-// Handle disconnection
-client.on('offline', function () {
-  logger.warn('MQTT client disconnected');
-  isConnected = false;
-});
-
-// Handle reconnection attempts
-client.on('reconnect', function () {
-  reconnectCount++;
-  const backoffDelay = Math.min(Math.pow(2, reconnectCount) * 1000, MAX_RECONNECT_DELAY);
-  logger.info(`Attempting to reconnect to MQTT broker (attempt ${reconnectCount}). Next retry in ${backoffDelay/1000} seconds.`);
-  
-  // Dynamically adjust reconnect period with exponential backoff
-  client.options.reconnectPeriod = backoffDelay;
-});
-
-// Handle connection close
-client.on('close', function () {
-  logger.warn('MQTT connection closed');
-  isConnected = false;
-});
-
 // Update-Handler for the /update message from MQTT
 client.on("message", async (topic: string, message: any) => {
   if (topic == `${config.mqtt.topic}/update`) {
@@ -329,9 +294,7 @@ const exitHandler = async (exitCode: number, error?: any) => {
         `Stopping MqDockerUp while updating containers: ${updatingContainers.join(", ")}`
       );
       for (const containerId of updatingContainers) {
-        if (isConnected) {
-          await HomeassistantService.publishAbortUpdateMessage(containerId, client);
-        }
+        await HomeassistantService.publishAbortUpdateMessage(containerId, client);
       }
     }
 
