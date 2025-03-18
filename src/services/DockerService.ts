@@ -141,17 +141,19 @@ export default class DockerService {
   /**
    * Gets the source repository for the specified Docker image.
    * @param imageName - The name of the Docker image.
+   * @param imageTag - The tag of the Docker image.
    * @returns A promise that resolves to the source repository URL.
    * @throws An error if the source repository could not be found.
    */
-  public static async getSourceRepo(imageName: string): Promise<string | null> {
+  public static async getSourceRepo(imageName: string, imageTag: string): Promise<string | null> {
     // Check cache first
-    if (DockerService.SourceUrlCache.has(imageName)) {
-      return DockerService.SourceUrlCache.get(imageName) ?? null;
+    const cachedUrl = DockerService.SourceUrlCache.get(imageName) ?? DockerService.SourceUrlCache.get(imageName + ":" + imageTag);
+    if (cachedUrl) {
+      return cachedUrl;
     }
 
     // Try method 1: Check Docker labels
-    const labels = await DockerService.getImageInfo(imageName).then(
+    const labels = await DockerService.getImageInfo(imageName + ":" + imageTag).then(
       (info) => info.Config.Labels
     ).catch((error) => {
       logger.error("Error getting image info:", error
@@ -160,7 +162,7 @@ export default class DockerService {
 
     if (labels && labels["org.opencontainers.image.source"]) {
       const url = labels["org.opencontainers.image.source"];
-      DockerService.SourceUrlCache.set(imageName, url);
+      DockerService.SourceUrlCache.set(imageName + ":" + imageTag, url);
       return url;
     }
 
