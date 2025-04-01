@@ -20,7 +20,7 @@
   ],
   "dependencies": {
     "axios": "^1.8.4",
-    "dockerode": "^4.0.4",
+    "dockerode": "^4.0.5",
     "figlet": "^1.8.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.21",
