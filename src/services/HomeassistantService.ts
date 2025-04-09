@@ -423,7 +423,7 @@ export default class HomeassistantService {
       if (sourceRepo) {
         logger.info(`Found source repository: ${sourceRepo}`);
       } else {
-        logger.warn(`Could not find source repository for ${image}:${tag}`);
+        logger.debug(`Could not find source repository for ${image}:${tag}`);
       }
 
       let updatePayload: any;
