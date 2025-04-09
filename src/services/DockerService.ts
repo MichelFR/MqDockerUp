@@ -104,7 +104,7 @@ export default class DockerService {
    * @param oldDigest - The old digest of the Docker image.
    * @returns A promise that resolves to a string containing the new digest.
    */
-  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string): Promise<string | null> {
+  public static async getImageNewDigest(imageName: string, tag: string, oldDigest: string | null): Promise<string | null> {
     try {
       let adapter = ImageRegistryAdapterFactory.getAdapter(imageName, tag);
       adapter['oldDigest'] = oldDigest;
@@ -151,12 +151,7 @@ export default class DockerService {
     }
 
     // Try method 1: Check Docker labels
-    const labels = await DockerService.getImageInfo(imageName).then(
-      (info) => info.Config.Labels
-    ).catch((error) => {
-      logger.error("Error getting image info:", error
-      );
-    });
+    const labels = (await DockerService.getImageInfo(imageName))?.Config.Labels;
 
     if (labels && labels["org.opencontainers.image.source"]) {
       const url = labels["org.opencontainers.image.source"];
@@ -199,8 +194,11 @@ export default class DockerService {
    * @param imageId - The ID of the Docker image.
    * @returns A promise that resolves to an `ImageInspectInfo` object.
    */
-  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo> {
-    return await DockerService.docker.getImage(imageId).inspect();
+  public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo | null> {
+    return await DockerService.docker.getImage(imageId).inspect().catch((error) => {
+      logger.error("Error getting image info:", error);
+      return null;
+    });
   }
 
   public static async updateContainer(containerId: string) {

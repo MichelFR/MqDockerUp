@@ -398,7 +398,7 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
-    const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
+    const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1] || null;
     let newDigest = null;
 
     newDigest = await DockerService.getImageNewDigest(image, tag, currentDigest);
@@ -423,12 +423,12 @@ export default class HomeassistantService {
 
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
-      const sourceRepo = await DockerService.getSourceRepo(image);
+      const sourceRepo = await DockerService.getSourceRepo(image + ":" + tag);
 
       if (sourceRepo) {
         logger.info(`Found source repository: ${sourceRepo}`);
       } else {
-        logger.warn(`Could not find source repository for ${image}`);
+        logger.warn(`Could not find source repository for ${image}:${tag}`);
       }
 
       let updatePayload: any;
