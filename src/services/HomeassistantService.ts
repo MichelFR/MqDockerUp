@@ -423,7 +423,7 @@ export default class HomeassistantService {
 
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
-      const sourceRepo = await DockerService.getSourceRepo(image + ":" + tag);
+      const sourceRepo = await DockerService.getSourceRepo(image, tag);
 
       if (sourceRepo) {
         logger.info(`Found source repository: ${sourceRepo}`);

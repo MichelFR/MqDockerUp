@@ -19,8 +19,8 @@
     "update"
   ],
   "dependencies": {
-    "axios": "^1.8.3",
-    "dockerode": "^4.0.4",
+    "axios": "^1.8.4",
+    "dockerode": "^4.0.5",
     "figlet": "^1.8.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.21",
@@ -28,10 +28,10 @@
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "winston": "^3.17.0",
-    "yaml": "^2.7.0"
+    "yaml": "^2.7.1"
   },
   "devDependencies": {
-    "@types/dockerode": "^3.3.35",
+    "@types/dockerode": "^3.3.37",
     "@types/figlet": "^1.7.0",
     "@types/jest": "^29.5.14",
     "@types/lodash": "^4.17.16",
@@ -40,8 +40,8 @@
     "nodemon": "^3.1.9",
     "npm": "^11.2.0",
     "source-map-support": "^0.5.21",
-    "ts-jest": "^29.2.6",
+    "ts-jest": "^29.3.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   }
 }
