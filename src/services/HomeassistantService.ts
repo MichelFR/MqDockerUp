@@ -403,24 +403,19 @@ export default class HomeassistantService {
 
     newDigest = await DockerService.getImageNewDigest(image, tag, currentDigest);
 
-    if (currentDigest) {
-      if (log) {
-        if (currentDigest && newDigest) {
-          if (currentDigest !== newDigest) {
-            logger.info(`New version available for image ${image}:${tag}`);
-          } else {
-            logger.info(`Image ${image}:${tag} is up-to-date`);
-          }
-        } else {
-          if (!imageInfo?.RepoDigests) {
-            logger.warn(`Failed to find current digest for image ${image}:${tag}`);
-          }
-          if (!newDigest) {
-            logger.warn(`Failed to find new digest for image ${image}:${tag}`);
-          }
-        }
+    if (log) {
+      if (!imageInfo?.RepoDigests) {
+        logger.warn(`No current digest found for image ${image}:${tag}`);
+      } else if (!newDigest) {
+        logger.warn(`No new digest found for image ${image}:${tag}`);
+      } else if (currentDigest !== newDigest) {
+        logger.info(`Update available for image ${image}:${tag}`);
+      } else {
+        logger.info(`Image ${image}:${tag} is already up-to-date`);
       }
+    }
 
+    if (currentDigest) {
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
       const sourceRepo = await DockerService.getSourceRepo(image, tag);

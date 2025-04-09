@@ -198,7 +198,7 @@ export default class DockerService {
    */
   public static async getImageInfo(imageId: string): Promise<Docker.ImageInspectInfo | null> {
     return await DockerService.docker.getImage(imageId).inspect().catch((error) => {
-      logger.error("Error getting image info:", error);
+      logger.debug("Error getting image info:", error);
       return null;
     });
   }
