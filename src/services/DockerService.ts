@@ -38,25 +38,29 @@ export default class DockerService {
       }
 
       data.on('data', (chunk: any) => {
-        const event = JSON.parse(chunk.toString());
+        try {
+          const event = JSON.parse(chunk.toString());
 
-        // Listen for create, update, and delete events on containers
-        if (event.Type === 'container') {
-          const containerName = event.Actor.Attributes.name;
-          const containerId = event.Actor.ID;
+          // Listen for create, update, and delete events on containers
+          if (event.Type === 'container') {
+            const containerName = event.Actor.Attributes.name;
+            const containerId = event.Actor.ID;
 
-          // Emit event when create, update or die action is detected
-          switch (event.Action) {
-            case 'create':
-            case 'start':
-            case 'die':
-              logger.debug(`${event.Action}: ${containerName}`);
-              DockerService.events.emit(event.Action, {containerName, containerId});
-              break;
-            default:
-              logger.debug(`${event.Action}: ${containerName}`);
-              break;
+            // Emit event when create, update or die action is detected
+            switch (event.Action) {
+              case 'create':
+              case 'start':
+              case 'die':
+                logger.debug(`${event.Action}: ${containerName}`);
+                DockerService.events.emit(event.Action, {containerName, containerId});
+                break;
+              default:
+                logger.debug(`${event.Action}: ${containerName}`);
+                break;
+            }
           }
+        } catch (error) {
+          logger.error('Error parsing Docker event JSON:', error, 'Chunk:', chunk.toString());
         }
       });
 
