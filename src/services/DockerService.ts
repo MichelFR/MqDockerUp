@@ -37,35 +37,57 @@ export default class DockerService {
         return;
       }
 
+      let buffer = '';
+      const maxBufferSize = 1024 * 1024; // 1MB
+
       data.on('data', (chunk: any) => {
-        try {
-          const event = JSON.parse(chunk.toString());
+        buffer += chunk.toString();
+        if (buffer.length > maxBufferSize) {
+          logger.error('Docker event buffer exceeded maximum size. Clearing buffer.');
+          buffer = '';
+          return;
+        }
 
-          // Listen for create, update, and delete events on containers
-          if (event.Type === 'container') {
-            const containerName = event.Actor.Attributes.name;
-            const containerId = event.Actor.ID;
+        // Process complete JSON objects from the buffer
+        let boundary = buffer.indexOf('\n');
+        while (boundary !== -1) {
+          const jsonString = buffer.slice(0, boundary).trim();
+          buffer = buffer.slice(boundary + 1);
 
-            // Emit event when create, update or die action is detected
-            switch (event.Action) {
-              case 'create':
-              case 'start':
-              case 'die':
-                logger.debug(`${event.Action}: ${containerName}`);
-                DockerService.events.emit(event.Action, {containerName, containerId});
-                break;
-              default:
-                logger.debug(`${event.Action}: ${containerName}`);
-                break;
+          if (jsonString) {
+            try {
+              const event = JSON.parse(jsonString);
+
+              // Listen for create, update, and delete events on containers
+              if (event.Type === 'container') {
+                const containerName = event.Actor.Attributes.name;
+                const containerId = event.Actor.ID;
+
+                // Emit event when create, update or die action is detected
+                switch (event.Action) {
+                  case 'create':
+                  case 'start':
+                  case 'die':
+                    logger.debug(`${event.Action}: ${containerName}`);
+                    DockerService.events.emit(event.Action, { containerName, containerId });
+                    break;
+                  default:
+                    logger.debug(`${event.Action}: ${containerName}`);
+                    break;
+                }
+              }
+            } catch (error) {
+              logger.error('Error parsing Docker event JSON:', error);
+              logger.debug(`Invalid JSON: ${jsonString}`);
             }
           }
-        } catch (error) {
-          logger.error('Error parsing Docker event JSON:', error, 'Chunk:', chunk.toString());
+
+          boundary = buffer.indexOf('\n');
         }
       });
 
       data.on('error', (error: any) => {
-        logger.error('Error while listening to docker events:', err);
+        logger.error('Error while listening to docker events:', error);
       });
     });
   }
