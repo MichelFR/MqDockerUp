@@ -187,7 +187,7 @@ services:
   mqdockerup:
     image: micrib/mqdockerup:latest
     container_name: mqdockerup
-    hotname: mqdockerup
+    hostname: mqdockerup
     restart: always
     environment:
       MAIN_CONTAINERCHECKINTERVAL: "5m"
