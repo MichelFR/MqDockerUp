@@ -398,29 +398,24 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
-    const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
+    const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1] || null;
     let newDigest = null;
 
     newDigest = await DockerService.getImageNewDigest(image, tag, currentDigest);
 
-    if (currentDigest) {
-      if (log) {
-        if (currentDigest && newDigest) {
-          if (currentDigest !== newDigest) {
-            logger.info(`New version available for image ${image}:${tag}`);
-          } else {
-            logger.info(`Image ${image}:${tag} is up-to-date`);
-          }
-        } else {
-          if (!imageInfo?.RepoDigests) {
-            logger.warn(`Failed to find current digest for image ${image}:${tag}`);
-          }
-          if (!newDigest) {
-            logger.warn(`Failed to find new digest for image ${image}:${tag}`);
-          }
-        }
+    if (log) {
+      if (!imageInfo?.RepoDigests) {
+        logger.warn(`No current digest found for image ${image}:${tag}`);
+      } else if (!newDigest) {
+        logger.warn(`No new digest found for image ${image}:${tag}`);
+      } else if (currentDigest !== newDigest) {
+        logger.info(`Update available for image ${image}:${tag}`);
+      } else {
+        logger.info(`Image ${image}:${tag} is already up-to-date`);
       }
+    }
 
+    if (currentDigest) {
       // Update entity payload
       const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
       const sourceRepo = await DockerService.getSourceRepo(image, tag);
@@ -428,7 +423,7 @@ export default class HomeassistantService {
       if (sourceRepo) {
         logger.info(`Found source repository: ${sourceRepo}`);
       } else {
-        logger.warn(`Could not find source repository for ${image}`);
+        logger.warn(`Could not find source repository for ${image}:${tag}`);
       }
 
       let updatePayload: any;
