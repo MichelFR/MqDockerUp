@@ -10,7 +10,7 @@ describe('ImageRegistryAdapterFactory', () => {
     expect(ImageRegistryAdapterFactory.getAdapter('image') instanceof DockerhubAdapter).toBe(true);
   });
 
-  test('getAdapter should return DockerHubAdapter for GitHub images', () => {
+  test('getAdapter should return GithubAdapter for GitHub images', () => {
     expect(ImageRegistryAdapterFactory.getAdapter('ghcr.io/user/image') instanceof GithubAdapter).toBe(true);
   });
 
@@ -19,7 +19,9 @@ describe('ImageRegistryAdapterFactory', () => {
   });
 
   test('getAdapter should throw an error for non-supported images', () => {
-    expect(() => ImageRegistryAdapterFactory.getAdapter('unsupported.registry.com/image')).toThrow();
+    expect(() => {
+      ImageRegistryAdapterFactory.getAdapter('unsupported.registry.com/image');
+    }).toThrow('No adapter found for the image: unsupported.registry.com/image');
   });
 
   test('getRegistryName should return DockerHub for DockerHub images', () => {
