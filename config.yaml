@@ -22,7 +22,7 @@ accessTokens:
   dockerhub: ""
   github: ""
 
-# Ignore Configureation    
+# Ignore Configuration
 ignore:
   containers: ""
   updates: ""
