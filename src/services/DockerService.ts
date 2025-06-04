@@ -150,6 +150,19 @@ export default class DockerService {
   }
 
   /**
+   * Determines how the container was created.
+   * Returns "Composer" when compose labels are present otherwise "Docker".
+   *
+   * @param container - Container inspect info
+   */
+  public static getCreatedBy(container: ContainerInspectInfo): string {
+    const labels = container?.Config?.Labels || {};
+    return Object.keys(labels).some((label) => label.startsWith("com.docker.compose"))
+      ? "Composer"
+      : "Docker";
+  }
+
+  /**
    * Gets the source repository for the specified Docker image.
    * @param imageName - The name of the Docker image.
    * @param imageTag - The tag of the Docker image.
