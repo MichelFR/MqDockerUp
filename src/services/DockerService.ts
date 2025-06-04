@@ -273,7 +273,10 @@ export default class DockerService {
               ...info.Config,
               ...info.HostConfig,
               ...info.NetworkSettings,
-              name: info.Name,
+              // info.Name includes a leading slash, which causes the name
+              // to be dropped when recreating the container. Strip it so the
+              // container keeps its original name after an update.
+              name: info.Name.startsWith("/") ? info.Name.substring(1) : info.Name,
               Image: image,
             };
 
