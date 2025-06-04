@@ -18,15 +18,16 @@ export default class ConfigService {
     if (value === undefined) return undefined;
 
     if (typeof value === "string") {
-      // Tenta di convertire in booleano
+      // Attempt to convert to boolean
       if (value.toLowerCase() === 'true') return true;
       if (value.toLowerCase() === 'false') return false;
   
-      // Tenta di convertire in numero
+      // Attempt to convert to number
       const numberValue = Number(value);
-      if (!isNaN(numberValue)) return numberValue;}
+      if (!isNaN(numberValue)) return numberValue;
+    }
 
-    // Se nessuno dei precedenti, ritorna la stringa originale
+    // If none of the above work, return the original string
     return value;
   }
 
