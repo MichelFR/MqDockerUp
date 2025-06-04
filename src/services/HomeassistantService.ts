@@ -261,6 +261,12 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
+      // Container Created By
+      topic = `${discoveryPrefix}/sensor/${topicName}/docker_created_by/config`;
+      payload = this.createPayload("Created By", image, tag, "dockerCreatedBy", deviceName, null, "mdi:information");
+      this.publishMessage(client, topic, payload, {retain: true});
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
 
       if (!IgnoreService.ignoreUpdates(container)) {
         // Container manual update
@@ -607,6 +613,8 @@ export default class HomeassistantService {
 
     let registry = await DockerService.getImageRegistryName(image);
 
+    const createdBy = DockerService.getCreatedBy(container);
+
     const topic = `${config.mqtt.topic}/${formatedImage}`;
     const payload = {
       dockerImage: image,
@@ -621,6 +629,7 @@ export default class HomeassistantService {
       dockerHealth: container.State.Health?.Status || "unknown",
       dockerPorts: dockerPorts,
       dockerRegistry: registry,
+      dockerCreatedBy: createdBy,
     };
     this.publishMessage(client, topic, payload, {retain: true});
   }
