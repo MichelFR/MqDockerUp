@@ -159,7 +159,7 @@ docker run -d \
   -e MAIN_CONTAINERCHECKINTERVAL="5m" \
   -e MAIN_UPDATECHECKINTERVAL="" \
   -e MAIN_PREFIX="" \
-  -e MQTT_CONNECTIONURI="mqtt=//127.0.0.1=1883" \
+  -e MQTT_CONNECTIONURI="mqtt://127.0.0.1:1883" \
   -e MQTT_TOPIC="mqdockerup" \
   -e MQTT_DISCOVERYPREFIX="homeassistant" \
   -e MQTT_CLIENTID="mqdockerup" \
