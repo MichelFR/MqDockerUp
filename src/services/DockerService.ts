@@ -31,6 +31,20 @@ export default class DockerService {
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
+    const handledActions = new Set([
+      'create',
+      'start',
+      'die',
+      'health_status',
+      'stop',
+      'destroy',
+      'rename',
+      'update',
+      'pause',
+      'unpause',
+      'restart',
+    ]);
+
     DockerService.docker.getEvents({}, (err: any, data: any) => {
       if (err) {
         logger.error('Error while listening to docker events:', err);
@@ -41,22 +55,15 @@ export default class DockerService {
         try {
           const event = JSON.parse(chunk.toString());
 
-          // Listen for create, update, and delete events on containers
           if (event.Type === 'container') {
             const containerName = event.Actor.Attributes.name;
             const containerId = event.Actor.ID;
 
-            // Emit event when create, update or die action is detected
-            switch (event.Action) {
-              case 'create':
-              case 'start':
-              case 'die':
-                logger.debug(`${event.Action}: ${containerName}`);
-                DockerService.events.emit(event.Action, {containerName, containerId});
-                break;
-              default:
-                logger.debug(`${event.Action}: ${containerName}`);
-                break;
+            if (handledActions.has(event.Action)) {
+              logger.debug(`${event.Action}: ${containerName}`);
+              DockerService.events.emit(event.Action, { containerName, containerId });
+            } else {
+              logger.debug(`${event.Action}: ${containerName}`);
             }
           }
         } catch (error) {
@@ -65,7 +72,7 @@ export default class DockerService {
       });
 
       data.on('error', (error: any) => {
-        logger.error('Error while listening to docker events:', err);
+        logger.error('Error while listening to docker events:', error);
       });
     });
   }
