@@ -330,22 +330,27 @@ export default class DockerService {
           (event) => {
             logger.debug(`Status: ${event.status}`);
 
-            if (event.progressDetail && event.id) {
-              // Update the layer progress
-              layerProgress[event.id] = {
-                current: event.progressDetail.current || 0,
-                total: event.progressDetail.total || 0,
-              };
+            if (event.id) {
+              const layer = layerProgress[event.id] || { current: 0, total: 0 };
 
-              // Recalculate total progress
-              const totalCurrent = Object.values(layerProgress).reduce((acc, layer) => acc + layer.current, 0);
-              const totalSize = Object.values(layerProgress).reduce((acc, layer) => acc + layer.total, 0);
+              if (event.progressDetail && (event.progressDetail.current || event.progressDetail.total)) {
+                layer.current = event.progressDetail.current || layer.current;
+                layer.total = event.progressDetail.total || layer.total;
+              }
+
+              if (["Pull complete", "Download complete", "Already exists"].includes(event.status)) {
+                layer.current = layer.total || layer.current;
+              }
+
+              layerProgress[event.id] = layer;
+
+              const totalCurrent = Object.values(layerProgress).reduce((acc, l) => acc + l.current, 0);
+              const totalSize = Object.values(layerProgress).reduce((acc, l) => acc + l.total, 0);
 
               if (totalSize > 0) {
-                const percentage = Math.round((totalCurrent / totalSize) * 100);
+                const percentage = Math.min(100, Math.round((totalCurrent / totalSize) * 100));
                 logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
 
-                // Publish progress updates with a debounce (e.g., every 1 second)
                 const now = Date.now();
                 if (now - lastPublishTime >= 1000) {
                   lastPublishTime = now;
