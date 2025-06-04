@@ -1,6 +1,6 @@
 {
   "name": "mqdockerup",
-  "version": "1.18.2",
+  "version": "1.19.0",
   "description": "A Node.js application that pushes information about running Docker containers to an MQTT server.",
   "main": "index.js",
   "scripts": {
