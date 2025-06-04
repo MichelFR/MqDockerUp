@@ -147,6 +147,102 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
+      // Container manual start
+      topic = `${discoveryPrefix}/button/${topicName}/docker_manual_start/config`;
+      payload = {
+        name: "Start",
+        unique_id: `${image}_${tag}_manual_start`,
+        command_topic: `${config.mqtt.topic}/start`,
+        command_template: JSON.stringify({containerId: container.Id}),
+        availability: {
+          topic: `${config.mqtt.topic}/availability`,
+        },
+        payload_on: "start",
+        device: {
+          manufacturer: "MqDockerUp",
+          model: `${image}:${tag}`,
+          name: deviceName,
+          sw_version: packageJson.version,
+          sa: "Docker",
+          identifiers: [`${image}_${tag}`],
+        },
+        icon: "mdi:play",
+      };
+      this.publishMessage(client, topic, payload, {retain: true});
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container manual stop
+      topic = `${discoveryPrefix}/button/${topicName}/docker_manual_stop/config`;
+      payload = {
+        name: "Stop",
+        unique_id: `${image}_${tag}_manual_stop`,
+        command_topic: `${config.mqtt.topic}/stop`,
+        command_template: JSON.stringify({containerId: container.Id}),
+        availability: {
+          topic: `${config.mqtt.topic}/availability`,
+        },
+        payload_on: "stop",
+        device: {
+          manufacturer: "MqDockerUp",
+          model: `${image}:${tag}`,
+          name: deviceName,
+          sw_version: packageJson.version,
+          sa: "Docker",
+          identifiers: [`${image}_${tag}`],
+        },
+        icon: "mdi:stop",
+      };
+      this.publishMessage(client, topic, payload, {retain: true});
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container manual pause
+      topic = `${discoveryPrefix}/button/${topicName}/docker_manual_pause/config`;
+      payload = {
+        name: "Pause",
+        unique_id: `${image}_${tag}_manual_pause`,
+        command_topic: `${config.mqtt.topic}/pause`,
+        command_template: JSON.stringify({containerId: container.Id}),
+        availability: {
+          topic: `${config.mqtt.topic}/availability`,
+        },
+        payload_on: "pause",
+        device: {
+          manufacturer: "MqDockerUp",
+          model: `${image}:${tag}`,
+          name: deviceName,
+          sw_version: packageJson.version,
+          sa: "Docker",
+          identifiers: [`${image}_${tag}`],
+        },
+        icon: "mdi:pause",
+      };
+      this.publishMessage(client, topic, payload, {retain: true});
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
+      // Container manual unpause
+      topic = `${discoveryPrefix}/button/${topicName}/docker_manual_unpause/config`;
+      payload = {
+        name: "Unpause",
+        unique_id: `${image}_${tag}_manual_unpause`,
+        command_topic: `${config.mqtt.topic}/unpause`,
+        command_template: JSON.stringify({containerId: container.Id}),
+        availability: {
+          topic: `${config.mqtt.topic}/availability`,
+        },
+        payload_on: "unpause",
+        device: {
+          manufacturer: "MqDockerUp",
+          model: `${image}:${tag}`,
+          name: deviceName,
+          sw_version: packageJson.version,
+          sa: "Docker",
+          identifiers: [`${image}_${tag}`],
+        },
+        icon: "mdi:play-pause",
+      };
+      this.publishMessage(client, topic, payload, {retain: true});
+      if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
+
       // Docker Image
       topic = `${discoveryPrefix}/sensor/${topicName}/docker_image/config`;
       payload = this.createPayload("Docker Image", image, tag, "dockerImage", deviceName, null, "mdi:image");
