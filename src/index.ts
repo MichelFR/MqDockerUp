@@ -129,6 +129,10 @@ client.on('connect', async function () {
 
   client.subscribe(`${config.mqtt.topic}/update`);
   client.subscribe(`${config.mqtt.topic}/restart`);
+  client.subscribe(`${config.mqtt.topic}/start`);
+  client.subscribe(`${config.mqtt.topic}/stop`);
+  client.subscribe(`${config.mqtt.topic}/pause`);
+  client.subscribe(`${config.mqtt.topic}/unpause`);
   client.subscribe(`${config.mqtt.topic}/manualUpdate`);
 });
 
@@ -177,6 +181,86 @@ client.on("message", async (topic: string, message: any) => {
       logger.info(`Got restart message for ${data?.containerId}`);
       await DockerService.restartContainer(data?.containerId);
       logger.info("Restarted container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/start`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got start message for ${data?.containerId}`);
+      await DockerService.startContainer(data?.containerId);
+      logger.info("Started container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/stop`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got stop message for ${data?.containerId}`);
+      await DockerService.stopContainer(data?.containerId);
+      logger.info("Stopped container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/pause`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got pause message for ${data?.containerId}`);
+      await DockerService.pauseContainer(data?.containerId);
+      logger.info("Paused container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/unpause`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got unpause message for ${data?.containerId}`);
+      await DockerService.unpauseContainer(data?.containerId);
+      logger.info("Unpaused container");
     }
 
     await checkAndPublishContainerMessages();
