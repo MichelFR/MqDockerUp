@@ -437,8 +437,17 @@ export default class HomeassistantService {
    * @param in_progress
    */
   public static async publishUpdateProgressMessage(container: any, client: any, update_percentage: number | null = null, in_progress: boolean = false) {
-    if (typeof container == "string") {
-      container = DockerService.docker.getContainer(container).inspect();
+    if (typeof container === "string") {
+      try {
+        container = await DockerService.docker
+          .getContainer(container)
+          .inspect();
+      } catch (error: any) {
+        logger.warn(
+          `Could not inspect container ${container}: ${error.message || error}`
+        );
+        return;
+      }
     }
 
     const image = container.Config.Image.split(":")[0];
@@ -462,8 +471,17 @@ export default class HomeassistantService {
   }
 
   public static async publishAbortUpdateMessage(container: any, client: any) {
-    if (typeof container == "string") {
-      container = DockerService.docker.getContainer(container).inspect();
+    try {
+      if (typeof container === "string") {
+        container = await DockerService.docker
+          .getContainer(container)
+          .inspect();
+      }
+    } catch (error: any) {
+      logger.warn(
+        `Could not inspect container ${container}: ${error.message || error}`
+      );
+      return;
     }
 
     if (!container) {
@@ -492,8 +510,17 @@ export default class HomeassistantService {
    * @param client
    */
   public static async publishImageUpdateMessage(container: any, client: any, update_percentage: number | null = null, remaining: number | null = null, state: string | null = null, log: boolean = true) {
-    if (typeof container == "string") {
-      container = DockerService.docker.getContainer(container).inspect();
+    if (typeof container === "string") {
+      try {
+        container = await DockerService.docker
+          .getContainer(container)
+          .inspect();
+      } catch (error: any) {
+        logger.warn(
+          `Could not inspect container ${container}: ${error.message || error}`
+        );
+        return;
+      }
     }
 
     const image = container.Config.Image.split(":")[0];
