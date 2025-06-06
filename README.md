@@ -6,8 +6,7 @@
 [![Create Release](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml)
 
 # MqDockerUp
-MqDockerUp is a tool that allows you to monitor and update your docker containers using MQTT and homeassistant. It can publish information about your containers, such as name, status, image, ports, etc., to an MQTT broker, and create or update corresponding entities in homeassistant. You can also send commands to start, stop, restart, or remove your containers via MQTT or homeassistant. It even creates update entities in Homeassistant to make it easy to update you running containers. MqDockerUp is easy to set up and configure, and supports multiple platforms and architectures. With MqDockerUp, you can have a unified and convenient way to manage your docker containers from anywhere.
-
+MqDockerUp is a tool that allows you to monitor and update your docker containers using MQTT and homeassistant. It can publish information about your containers, such as name, status, image, ports, etc., to an MQTT broker, and create or update corresponding entities in homeassistant. You can also send commands to start, stop, pause, unpause, restart, or remove your containers via MQTT or homeassistant. It even creates update entities in Homeassistant to make it easy to update your running containers. MqDockerUp is easy to set up and configure, and supports multiple platforms and architectures. With MqDockerUp, you can have a unified and convenient way to manage your docker containers from anywhere.
 
 ## How it works
 
@@ -38,7 +37,7 @@ The configuration file `config.yaml` (`\app\config.yaml` in docker the container
 
 The main configuration is specified in the `main` section of `config.yaml`:
 
-|                     Name |     Enviromental Variable     | Type     | Default | Description                                                                                                                                                                                                                           |
+|                     Name |     Environmental Variable     | Type     | Default | Description                                                                                                                                                                                                                           |
 | -----------------------: | :---------------------------: | :------- | :-----: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `containerCheckInterval` | `MAIN_CONTAINERCHECKINTERVAL` | `string` | `"5m"`  | The interval at which container are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and [`[unit]`](#unit).                                        |
 |    `updateCheckInterval` |  `MAIN_UPDATECHECKINTERVAL`   | `string` |  `""`   | The interval at which updates are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and [`[unit]`](#unit) <br> (same of containerCheckInterval if `""`). |
@@ -63,7 +62,7 @@ The main configuration is specified in the `main` section of `config.yaml`:
 
 The MQTT configuration is specified in the `mqtt` section of `config.yaml`:
 
-|              Name | Enviromental Variable  |   Type    |         Default         | Description                                                                                             |
+|              Name | Environmental Variable  |   Type    |         Default         | Description                                                                                             |
 | ----------------: | :--------------------: | :-------: | :---------------------: | :------------------------------------------------------------------------------------------------------ |
 |   `connectionUri` |  `MQTT_CONNECTIONURI`  | `string`  | `mqtt://127.0.0.1:1883` | The URL of the MQTT broker to connect to.                                                               |
 |           `topic` |      `MQTT_TOPIC`      | `string`  |      `mqdockerup`       | The MQTT topic to publish updates to.                                                                   |
@@ -83,7 +82,7 @@ The MQTT configuration is specified in the `mqtt` section of `config.yaml`:
 
 The access tokens configuration is specified in the `accessTokens` section of `config.yaml`:
 
-|        Name |  Enviromental Variable   |   Type   | Default | Description                                                                                            |
+|        Name |  Environmental Variable   |   Type   | Default | Description                                                                                            |
 | ----------: | :----------------------: | :------: | :-----: | :----------------------------------------------------------------------------------------------------- |
 | `dockerhub` | `ACCESSTOKENS_DOCKERHUB` | `string` |  `""`   | The Dockerhub token, used to avoid the limitations of the DockerHub API _‼️Still Work In Progress_. |
 |    `github` |  `ACCESSTOKENS_GITHUB`   | `string` |  `""`   | The Github token, used to manage images on GitHub (`ghcr.io`) _⚠️Needed for this type of images_.   |
@@ -104,7 +103,7 @@ The access tokens configuration is specified in the `accessTokens` section of `c
 
 The ignore configuration is specified in the `ignore` section of `config.yaml`:
 
-|         Name | Enviromental Variable |   Type   | Default | Description                                                                                                         |
+|         Name | Environmental Variable |   Type   | Default | Description                                                                                                         |
 | -----------: | :-------------------: | :------: | :-----: | :------------------------------------------------------------------------------------------------------------------ |
 | `containers` |  `IGNORE_CONTAINERS`  | `string` |  `""`   | A comma separated list of container to be ignored in the check, or `*` to ignore all containers .                   |
 |    `updates` |   `IGNORE_UPDATES`    | `string` |  `""`   | A comma separated list of container which updates should be ignored in the check, or `*` to ignore all containers . |
@@ -113,7 +112,7 @@ The ignore configuration is specified in the `ignore` section of `config.yaml`:
 
 The ignore configuration is specified in the `logs` section of `config.yaml`:
 
-|    Name | Enviromental Variable |   Type   | Default  | Description                                                                                                     |
+|    Name | Environmental Variable |   Type   | Default  | Description                                                                                                     |
 | ------: | :-------------------: | :------: | :------: | :-------------------------------------------------------------------------------------------------------------- |
 | `level` |     `LOGS_LEVEL`      | `string` | `"info"` | Choose the maximum level of logs to show, in order `error`, `warn`, `info`, `http`, `verbose`, `debug`, `silly` |
 
@@ -160,7 +159,7 @@ docker run -d \
   -e MAIN_CONTAINERCHECKINTERVAL="5m" \
   -e MAIN_UPDATECHECKINTERVAL="" \
   -e MAIN_PREFIX="" \
-  -e MQTT_CONNECTIONURI="mqtt=//127.0.0.1=1883" \
+  -e MQTT_CONNECTIONURI="mqtt://127.0.0.1:1883" \
   -e MQTT_TOPIC="mqdockerup" \
   -e MQTT_DISCOVERYPREFIX="homeassistant" \
   -e MQTT_CLIENTID="mqdockerup" \
@@ -187,7 +186,7 @@ services:
   mqdockerup:
     image: micrib/mqdockerup:latest
     container_name: mqdockerup
-    hotname: mqdockerup
+    hostname: mqdockerup
     restart: always
     environment:
       MAIN_CONTAINERCHECKINTERVAL: "5m"

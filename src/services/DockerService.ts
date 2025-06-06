@@ -31,6 +31,20 @@ export default class DockerService {
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
+    const handledActions = new Set([
+      'create',
+      'start',
+      'die',
+      'health_status',
+      'stop',
+      'destroy',
+      'rename',
+      'update',
+      'pause',
+      'unpause',
+      'restart',
+    ]);
+
     DockerService.docker.getEvents({}, (err: any, data: any) => {
       if (err) {
         logger.error('Error while listening to docker events:', err);
@@ -38,30 +52,27 @@ export default class DockerService {
       }
 
       data.on('data', (chunk: any) => {
-        const event = JSON.parse(chunk.toString());
+        try {
+          const event = JSON.parse(chunk.toString());
 
-        // Listen for create, update, and delete events on containers
-        if (event.Type === 'container') {
-          const containerName = event.Actor.Attributes.name;
-          const containerId = event.Actor.ID;
+          if (event.Type === 'container') {
+            const containerName = event.Actor.Attributes.name;
+            const containerId = event.Actor.ID;
 
-          // Emit event when create, update or die action is detected
-          switch (event.Action) {
-            case 'create':
-            case 'start':
-            case 'die':
+            if (handledActions.has(event.Action)) {
               logger.debug(`${event.Action}: ${containerName}`);
-              DockerService.events.emit(event.Action, {containerName, containerId});
-              break;
-            default:
+              DockerService.events.emit(event.Action, { containerName, containerId });
+            } else {
               logger.debug(`${event.Action}: ${containerName}`);
-              break;
+            }
           }
+        } catch (error) {
+          logger.error('Error parsing Docker event JSON:', error, 'Chunk:', chunk.toString());
         }
       });
 
       data.on('error', (error: any) => {
-        logger.error('Error while listening to docker events:', err);
+        logger.error('Error while listening to docker events:', error);
       });
     });
   }
@@ -136,6 +147,19 @@ export default class DockerService {
       return parts[0];
     }
     return null;
+  }
+
+  /**
+   * Determines how the container was created.
+   * Returns "Composer" when compose labels are present otherwise "Docker".
+   *
+   * @param container - Container inspect info
+   */
+  public static getCreatedBy(container: ContainerInspectInfo): string {
+    const labels = container?.Config?.Labels || {};
+    return Object.keys(labels).some((label) => label.startsWith("com.docker.compose"))
+      ? "Composer"
+      : "Docker";
   }
 
   /**
@@ -247,7 +271,10 @@ export default class DockerService {
               ...info.Config,
               ...info.HostConfig,
               ...info.NetworkSettings,
-              name: info.Name,
+              // info.Name includes a leading slash, which causes the name
+              // to be dropped when recreating the container. Strip it so the
+              // container keeps its original name after an update.
+              name: info.Name.startsWith("/") ? info.Name.substring(1) : info.Name,
               Image: image,
             };
 
@@ -301,22 +328,27 @@ export default class DockerService {
           (event) => {
             logger.debug(`Status: ${event.status}`);
 
-            if (event.progressDetail && event.id) {
-              // Update the layer progress
-              layerProgress[event.id] = {
-                current: event.progressDetail.current || 0,
-                total: event.progressDetail.total || 0,
-              };
+            if (event.id) {
+              const layer = layerProgress[event.id] || { current: 0, total: 0 };
 
-              // Recalculate total progress
-              const totalCurrent = Object.values(layerProgress).reduce((acc, layer) => acc + layer.current, 0);
-              const totalSize = Object.values(layerProgress).reduce((acc, layer) => acc + layer.total, 0);
+              if (event.progressDetail && (event.progressDetail.current || event.progressDetail.total)) {
+                layer.current = event.progressDetail.current || layer.current;
+                layer.total = event.progressDetail.total || layer.total;
+              }
+
+              if (["Pull complete", "Download complete", "Already exists"].includes(event.status)) {
+                layer.current = layer.total || layer.current;
+              }
+
+              layerProgress[event.id] = layer;
+
+              const totalCurrent = Object.values(layerProgress).reduce((acc, l) => acc + l.current, 0);
+              const totalSize = Object.values(layerProgress).reduce((acc, l) => acc + l.total, 0);
 
               if (totalSize > 0) {
-                const percentage = Math.round((totalCurrent / totalSize) * 100);
+                const percentage = Math.min(100, Math.round((totalCurrent / totalSize) * 100));
                 logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
 
-                // Publish progress updates with a debounce (e.g., every 1 second)
                 const now = Date.now();
                 if (now - lastPublishTime >= 1000) {
                   lastPublishTime = now;

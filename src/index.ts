@@ -129,6 +129,10 @@ client.on('connect', async function () {
 
   client.subscribe(`${config.mqtt.topic}/update`);
   client.subscribe(`${config.mqtt.topic}/restart`);
+  client.subscribe(`${config.mqtt.topic}/start`);
+  client.subscribe(`${config.mqtt.topic}/stop`);
+  client.subscribe(`${config.mqtt.topic}/pause`);
+  client.subscribe(`${config.mqtt.topic}/unpause`);
   client.subscribe(`${config.mqtt.topic}/manualUpdate`);
 });
 
@@ -180,6 +184,86 @@ client.on("message", async (topic: string, message: any) => {
     }
 
     await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/start`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got start message for ${data?.containerId}`);
+      await DockerService.startContainer(data?.containerId);
+      logger.info("Started container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/stop`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got stop message for ${data?.containerId}`);
+      await DockerService.stopContainer(data?.containerId);
+      logger.info("Stopped container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/pause`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got pause message for ${data?.containerId}`);
+      await DockerService.pauseContainer(data?.containerId);
+      logger.info("Paused container");
+    }
+
+    await checkAndPublishContainerMessages();
+  } else if (topic == `${config.mqtt.topic}/unpause`) {
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+      } else {
+        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+      }
+      return;
+    }
+
+    if (data?.containerId) {
+      logger.info(`Got unpause message for ${data?.containerId}`);
+      await DockerService.unpauseContainer(data?.containerId);
+      logger.info("Unpaused container");
+    }
+
+    await checkAndPublishContainerMessages();
   } else if (topic == `${config.mqtt.topic}/manualUpdate`) {
     let data;
     try {
@@ -203,73 +287,32 @@ client.on("message", async (topic: string, message: any) => {
 });
 
 // Docker event handlers
-// TODO: Do this in a more elegant way
 const containerEventHandler = _.debounce((eventName: string, data: { containerName: string, containerId: string }) => {
   logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
-// TODO: Improve this by not checking all containers every time
-DockerService.events.on('create', (data) => {
-  containerEventHandler('created', data);
-  checkAndPublishContainerMessages();
-});
+// Map Docker event action to a more human readable log string
+const eventMap: Record<string, string> = {
+  create: 'created',
+  start: 'started',
+  die: 'died',
+  health_status: 'health_status',
+  stop: 'stopped',
+  destroy: 'destroyed',
+  rename: 'renamed',
+  update: 'updated',
+  pause: 'paused',
+  unpause: 'unpaused',
+  restart: 'restarted',
+};
 
-DockerService.events.on('start', (data) => {
-  containerEventHandler('started', data);
-  checkAndPublishContainerMessages();
-});
-
-DockerService.events.on('die', (data) => {
-  containerEventHandler('died', data);
-  checkAndPublishContainerMessages();
-});
-
-// when health status changes
-DockerService.events.on('health_status', (data) => {
-  containerEventHandler('health_status', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is stopped
-DockerService.events.on('stop', (data) => {
-  containerEventHandler('stopped', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is removed
-DockerService.events.on('destroy', (data) => {
-  containerEventHandler('destroyed', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is renamed
-DockerService.events.on('rename', (data) => {
-  containerEventHandler('renamed', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is updated
-DockerService.events.on('update', (data) => {
-  containerEventHandler('updated', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is paused
-DockerService.events.on('pause', (data) => {
-  containerEventHandler('paused', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is unpaused
-DockerService.events.on('unpause', (data) => {
-  containerEventHandler('unpaused', data);
-  checkAndPublishContainerMessages();
-});
-
-// when container is restarted
-DockerService.events.on('restart', (data) => {
-  containerEventHandler('restarted', data);
-  checkAndPublishContainerMessages();
+// Register listeners for Docker events
+Object.entries(eventMap).forEach(([eventName, logName]) => {
+  DockerService.events.on(eventName, (data) => {
+    containerEventHandler(logName, data);
+    // TODO: Improve this by not checking all containers every time
+    checkAndPublishContainerMessages();
+  });
 });
 
 
