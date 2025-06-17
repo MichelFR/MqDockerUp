@@ -33,7 +33,7 @@
   "devDependencies": {
     "@types/dockerode": "^3.3.40",
     "@types/figlet": "^1.7.0",
-    "@types/jest": "^29.5.14",
+    "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.17",
     "install": "^0.13.0",
     "jest": "^30.0.0",
