@@ -26,7 +26,7 @@ export abstract class ImageRegistryAdapter {
         return headers;
     }
 
-    abstract checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }>;
+    abstract checkForNewDigest(): Promise<{ newDigest: string; }>;
 
     protected removeSHA256Prefix(input: string): string {
         const prefix = "sha256:";
