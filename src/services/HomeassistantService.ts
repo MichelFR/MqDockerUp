@@ -527,27 +527,20 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
-    const currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
-    let newDigest = null;
+    const repoDigests = imageInfo?.RepoDigests || [];
+    let currentDigest, newDigest = null;
 
-    newDigest = await DockerService.getImageNewDigest(image, tag, currentDigest);
+    newDigest = await DockerService.getImageNewDigest(image, tag);
 
-    if (currentDigest) {
-      if (log) {
-        if (currentDigest && newDigest) {
-          if (currentDigest !== newDigest) {
-            logger.info(`New version available for image ${image}:${tag}`);
-          } else {
-            logger.info(`Image ${image}:${tag} is up-to-date`);
-          }
-        } else {
-          if (!imageInfo?.RepoDigests) {
-            logger.warn(`Failed to find current digest for image ${image}:${tag}`);
-          }
-          if (!newDigest) {
-            logger.warn(`Failed to find new digest for image ${image}:${tag}`);
-          }
-        }
+    if (!newDigest) {
+      logger.warn(`Failed to find new digest for image ${image}:${tag}`);
+    } else {
+      if (repoDigests.some(d => d.endsWith(newDigest))) {
+        currentDigest = newDigest;
+        logger.info(`Image ${image}:${tag} is up-to-date`);
+      } else {
+        currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
+        logger.info(`New version available for image ${image}:${tag}`);
       }
 
       // Update entity payload
