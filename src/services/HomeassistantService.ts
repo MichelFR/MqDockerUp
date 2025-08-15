@@ -528,19 +528,24 @@ export default class HomeassistantService {
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
     const repoDigests = imageInfo?.RepoDigests || [];
-    let currentDigest, newDigest = null;
+    let currentDigest: string | null = null, newDigest: string | null = null;
 
     newDigest = await DockerService.getImageNewDigest(image, tag);
 
     if (!newDigest) {
       logger.warn(`Failed to find new digest for image ${image}:${tag}`);
     } else {
-      if (repoDigests.some(d => d.endsWith(newDigest))) {
-        currentDigest = newDigest;
-        logger.info(`Image ${image}:${tag} is up-to-date`);
+      if (repoDigests.length > 0) {
+        if (repoDigests.some(d => d.endsWith(newDigest))) {
+          currentDigest = newDigest;
+          logger.info(`Image ${image}:${tag} is up-to-date`);
+        } else {
+          currentDigest = repoDigests[0].split(":")[1];
+          logger.info(`New version available for image ${image}:${tag}`);
+        }
       } else {
-        currentDigest = imageInfo?.RepoDigests[0]?.split(":")[1];
-        logger.info(`New version available for image ${image}:${tag}`);
+        currentDigest = "";
+        logger.info(`No existing digests found for image ${image}:${tag}`);
       }
 
       // Update entity payload
