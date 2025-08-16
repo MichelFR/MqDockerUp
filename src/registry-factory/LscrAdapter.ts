@@ -34,7 +34,7 @@ export class LscrAdapter extends ImageRegistryAdapter {
         return `${LscrAdapter.DOCKER_API_URL}/${image}/tags?name=${this.tag}`;
     }
 
-    async checkForNewDigest(): Promise<{ newDigest: string; isDifferent: boolean }> {
+    async checkForNewDigest(): Promise<{ newDigest: string; }> {
         try {
             let response = await this.http.get(this.getImageUrl());
             let newDigest = null;
@@ -47,11 +47,9 @@ export class LscrAdapter extends ImageRegistryAdapter {
                 logger.error(response);
             }
 
-            const isDifferent = this.oldDigest !== newDigest;
-
-            return { newDigest, isDifferent };
+            return { newDigest };
         } catch (error) {
-            console.error(`Failed to check for new lscr.io image digest: ${error}`);
+            logger.error(`Failed to check for new lscr.io image digest: ${error}`);
             throw error;
         }
     }
