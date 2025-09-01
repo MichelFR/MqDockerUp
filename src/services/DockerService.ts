@@ -228,133 +228,154 @@ export default class DockerService {
       logger.info(`Updating individual container: ${containerId}`);
 
       const container = DockerService.docker.getContainer(containerId);
-      const info = await container.inspect();
-      const oldImageId = info.Image;
-      const image = info.Config.Image;
-      const imageName = image.split(":")[0];
-
-      // Prevent updating MqDockerUp from itself
-      if (imageName.toLowerCase().includes("mqdockerup")) {
-        logger.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
-        return;
+      
+      let info = null
+      try {
+        info = await container.inspect();
+      } catch (err: any) {
+        if (err.statusCode === 404) {
+          logger.warn(`Container ${containerId} no longer exists`);
+        } else {
+          logger.error(`Failed to inspect container ${containerId}:`, err);
+          throw err;
+        }
       }
 
-      // Store layer progress here
-      const layerProgress: Record<string, { current: number; total: number }> = {};
-      let lastPublishTime = 0;
+      if (info) {
+        const oldImageId = info.Image;
+        const image = info.Config.Image;
+        const imageName = image.split(":")[0];
 
-      await DockerService.docker.pull(image, async (err: any, stream: any) => {
-        logger.info("Pulling image: " + image);
-        if (err) {
-          logger.error("Pulling Error: " + err);
+        // Prevent updating MqDockerUp from itself
+        if (imageName.toLowerCase().includes("mqdockerup")) {
+          logger.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
           return;
         }
 
-        this.updatingContainers.push(containerId);
+        // Store layer progress here
+        const layerProgress: Record<string, { current: number; total: number }> = {};
+        let lastPublishTime = 0;
 
-        DockerService.docker.modem.followProgress(
-          stream,
-          async (err: any, output: any) => {
-            if (err) {
-              logger.error("Stream Error: " + err);
-              return;
-            }
+        await DockerService.docker.pull(image, async (err: any, stream: any) => {
+          logger.info("Pulling image: " + image);
+          if (err) {
+            logger.error("Pulling Error: " + err);
+            return;
+          }
 
-            logger.info("Image pulled successfully");
+          this.updatingContainers.push(containerId);
 
-            const containerConfig: any = {
-              ...info,
-              ...info.Config,
-              ...info.HostConfig,
-              ...info.NetworkSettings,
-              // info.Name includes a leading slash, which causes the name
-              // to be dropped when recreating the container. Strip it so the
-              // container keeps its original name after an update.
-              name: info.Name.startsWith("/") ? info.Name.substring(1) : info.Name,
-              Image: image,
-            };
-
-            const mounts = info.Mounts as DockerMount[];
-            // Handle different mount types properly
-            const binds: string[] = [];
-            const volumes: { [key: string]: {} } = {};
-
-            mounts.forEach((mount) => {
-              if (mount.Type === 'bind') {
-                binds.push(`${mount.Source}:${mount.Destination}${mount.Mode ? ':' + mount.Mode : ''}`);
-              } else if (mount.Type === 'volume') {
-                // For named volumes, we just need to ensure they're in the volumes configuration
-                const volumeName = mount.Name || mount.Source;
-                volumes[volumeName] = {};
+          DockerService.docker.modem.followProgress(
+            stream,
+            async (err: any, output: any) => {
+              if (err) {
+                logger.error("Stream Error: " + err);
+                return;
               }
-            });
 
-            containerConfig.HostConfig.Binds = binds;
-            containerConfig.Volumes = volumes;
+              logger.info("Image pulled successfully");
 
-            try {
-              // Restart the container with the new image
-              await container.stop();
-              await container.remove();
-              const newContainer = await DockerService.docker.createContainer(containerConfig);
-              await newContainer.start();
+              const containerConfig: any = {
+                ...info,
+                ...info.Config,
+                ...info.HostConfig,
+                ...info.NetworkSettings,
+                // info.Name includes a leading slash, which causes the name
+                // to be dropped when recreating the container. Strip it so the
+                // container keeps its original name after an update.
+                name: info.Name.startsWith("/") ? info.Name.substring(1) : info.Name,
+                Image: image,
+              };
 
-              // Remove old image
-              DockerService.docker
-                .getImage(oldImageId)
-                .remove({ force: true }, (err, data) => {
-                  if (err) {
-                    logger.error("Error removing old image: " + err);
-                  } else {
-                    logger.info("Old image removed successfully");
+              // The container will start with a new ID
+              containerConfig.Id = "";
+
+              const mounts = info.Mounts as DockerMount[];
+              // Handle different mount types properly
+              const binds: string[] = [];
+              const volumes: { [key: string]: {} } = {};
+
+              mounts.forEach((mount) => {
+                if (mount.Type === 'bind') {
+                  binds.push(`${mount.Source}:${mount.Destination}${mount.Mode ? ':' + mount.Mode : ''}`);
+                } else if (mount.Type === 'volume') {
+                  // For named volumes, we just need to ensure they're in the volumes configuration
+                  const volumeName = mount.Name || mount.Source;
+                  volumes[volumeName] = {};
+                }
+              });
+
+              containerConfig.HostConfig.Binds = binds;
+              containerConfig.Volumes = volumes;
+
+              logger.debug(`Container config prepared for update: ${JSON.stringify(containerConfig, null, 2)}`);
+
+
+              try {
+                // Restart the container with the new image
+                await container.restart();
+                // await container.stop();
+                // await container.remove();
+                // const newContainer = await DockerService.docker.createContainer(containerConfig);
+                // await newContainer.start();
+
+                // Remove old image
+                DockerService.docker
+                  .getImage(oldImageId)
+                  .remove({ force: true }, (err, data) => {
+                    if (err) {
+                      logger.error("Error removing old image: " + err);
+                    } else {
+                      logger.info("Old image removed successfully");
+                    }
+                  });
+
+                // Publish final 100% progress
+                await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
+                this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
+
+                return container;
+              } catch (error) {
+                logger.error("Error restarting container with new image");
+                logger.error(error);
+                throw error;
+              }
+            },
+            (event) => {
+              logger.debug(`Status: ${event.status}`);
+
+              if (event.id) {
+                const layer = layerProgress[event.id] || { current: 0, total: 0 };
+
+                if (event.progressDetail && (event.progressDetail.current || event.progressDetail.total)) {
+                  layer.current = event.progressDetail.current || layer.current;
+                  layer.total = event.progressDetail.total || layer.total;
+                }
+
+                if (["Pull complete", "Download complete", "Already exists"].includes(event.status)) {
+                  layer.current = layer.total || layer.current;
+                }
+
+                layerProgress[event.id] = layer;
+
+                const totalCurrent = Object.values(layerProgress).reduce((acc, l) => acc + l.current, 0);
+                const totalSize = Object.values(layerProgress).reduce((acc, l) => acc + l.total, 0);
+
+                if (totalSize > 0) {
+                  const percentage = Math.min(100, Math.round((totalCurrent / totalSize) * 100));
+                  logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
+
+                  const now = Date.now();
+                  if (now - lastPublishTime >= 1000) {
+                    lastPublishTime = now;
+                    HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
                   }
-                });
-
-              // Publish final 100% progress
-              await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
-              this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
-
-              return newContainer;
-            } catch (error) {
-              logger.error("Error restarting container with new image");
-              logger.error(error);
-              throw error;
-            }
-          },
-          (event) => {
-            logger.debug(`Status: ${event.status}`);
-
-            if (event.id) {
-              const layer = layerProgress[event.id] || { current: 0, total: 0 };
-
-              if (event.progressDetail && (event.progressDetail.current || event.progressDetail.total)) {
-                layer.current = event.progressDetail.current || layer.current;
-                layer.total = event.progressDetail.total || layer.total;
-              }
-
-              if (["Pull complete", "Download complete", "Already exists"].includes(event.status)) {
-                layer.current = layer.total || layer.current;
-              }
-
-              layerProgress[event.id] = layer;
-
-              const totalCurrent = Object.values(layerProgress).reduce((acc, l) => acc + l.current, 0);
-              const totalSize = Object.values(layerProgress).reduce((acc, l) => acc + l.total, 0);
-
-              if (totalSize > 0) {
-                const percentage = Math.min(100, Math.round((totalCurrent / totalSize) * 100));
-                logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
-
-                const now = Date.now();
-                if (now - lastPublishTime >= 1000) {
-                  lastPublishTime = now;
-                  HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
                 }
               }
             }
-          }
-        );
-      });
+          );
+        });
+      }
     } catch (error: any) {
       logger.error("Error updating container");
       logger.error(error);
