@@ -38,25 +38,29 @@ export default class IgnoreService {
    */
   public static ignoreUpdates(container: ContainerInspectInfo) {
     if (config?.ignore?.updates != "*") {
-      // Always ignore MqDockerUp containers to prevent self-updates
-      const image = container.Config.Image.split(":")[0];
-      const imageName = image.toLowerCase();
-      if (imageName.includes("mqdockerup")) {
-        logger.debug(`Ignoring MqDockerUp container updates for ${image}`);
-        return true;
-      }
+      const ignoreMQDockerUp = this.ignoreMQDockerUpContainers(container);
 
       const ignoreUpdatesByLabel: boolean = ("Labels" in container.Config) && ("mqdockerup.ignore_updates" in container.Config.Labels) && container.Config.Labels["mqdockerup.ignore_updates"] === "true";
 
       const containersCommaList = config?.ignore?.updates;
       const ignoreUpdatesByEnv = containersCommaList.includes(container.Name.replace("/", ""));
 
-      return ignoreUpdatesByLabel || ignoreUpdatesByEnv
+      return ignoreUpdatesByLabel || ignoreUpdatesByEnv || ignoreMQDockerUp;
 
     } else {
       return true
     }
   }
 
+  // Always ignore MqDockerUp containers to prevent self-updates
+  private static ignoreMQDockerUpContainers(container: ContainerInspectInfo) {
+    const image = container.Config.Image.split(":")[0];
+    const imageName = image.toLowerCase();
+    if (imageName.includes("mqdockerup")) {
+      logger.debug(`Ignoring MqDockerUp container updates for ${image}`);
+      return true;
+    }
+    return false;
+  }
 
 }
