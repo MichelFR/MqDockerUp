@@ -54,13 +54,17 @@ export default class IgnoreService {
 
   // Always ignore MqDockerUp containers to prevent self-updates
   private static ignoreMQDockerUpContainers(container: ContainerInspectInfo) {
-    const image = container.Config.Image.split(":")[0];
-    const imageName = image.toLowerCase();
-    if (imageName.includes("mqdockerup")) {
-      logger.debug(`Ignoring MqDockerUp container updates for ${image}`);
-      return true;
-    }
-    return false;
+    const fullImageName = container.Config.Image;  
+    const lastColon = fullImageName.lastIndexOf(':');  
+    const lastSlash = fullImageName.lastIndexOf('/');  
+    // If a colon exists and it's after the last slash, it's likely a tag.  
+    const imageNameWithoutTag = lastColon > lastSlash ? fullImageName.substring(0, lastColon) : fullImageName;  
+
+    const isMqDockerUp = imageNameWithoutTag.toLowerCase().includes("mqdockerup");  
+    if (isMqDockerUp) {  
+      logger.debug(`Ignoring MqDockerUp container updates for ${fullImageName}`);  
+    }  
+    return isMqDockerUp;  
   }
 
 }
