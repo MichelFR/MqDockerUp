@@ -365,7 +365,7 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      default_entity_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       name: `${name}`,
       unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
@@ -402,7 +402,7 @@ export default class HomeassistantService {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     return {
-      object_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      default_entity_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       name: `${name}`,
       unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
