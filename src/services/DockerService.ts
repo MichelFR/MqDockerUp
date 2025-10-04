@@ -267,7 +267,7 @@ export default class DockerService {
 
           DockerService.docker.modem.followProgress(
             stream,
-            async (err: any, output: any) => {
+            async (err: any) => {
               if (err) {
                 logger.error("Stream Error: " + err);
                 return;
@@ -312,23 +312,26 @@ export default class DockerService {
 
 
               try {
-                // Restart the container with the new image
-                await container.restart();
-                // await container.stop();
-                // await container.remove();
-                // const newContainer = await DockerService.docker.createContainer(containerConfig);
-                // await newContainer.start();
+                await container.stop();
+                await container.remove();
+                const newContainer = await DockerService.docker.createContainer(containerConfig);
+                await newContainer.start();
 
                 // Remove old image
-                DockerService.docker
-                  .getImage(oldImageId)
-                  .remove({ force: true }, (err, data) => {
-                    if (err) {
-                      logger.error("Error removing old image: " + err);
-                    } else {
-                      logger.info("Old image removed successfully");
-                    }
-                  });
+                try {
+                  DockerService.docker
+                    .getImage(oldImageId)
+                    .remove({ force: true }, (err, data) => {
+                      if (err) {
+                        logger.error("Error removing old image: " + err);
+                      } else {
+                        logger.info("Old image removed successfully");
+                      }
+                    });
+                } catch (e) {
+                  logger.error("Error removing old image: " + e);
+                }
+
 
                 // Publish final 100% progress
                 await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
@@ -336,7 +339,7 @@ export default class DockerService {
 
                 return container;
               } catch (error) {
-                logger.error("Error restarting container with new image");
+                logger.error("Error starting container with new image");
                 logger.error(error);
                 throw error;
               }
