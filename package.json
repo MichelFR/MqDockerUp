@@ -34,7 +34,7 @@
     "@types/dockerode": "^3.3.47",
     "@types/figlet": "^1.7.0",
     "@types/jest": "^30.0.0",
-    "@types/lodash": "^4.17.20",
+    "@types/lodash": "^4.17.21",
     "install": "^0.13.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
