@@ -247,12 +247,6 @@ export default class DockerService {
         const image = info.Config.Image;
         const imageName = image.split(":")[0];
 
-        // Prevent updating MqDockerUp from itself
-        if (imageName.toLowerCase().includes("mqdockerup")) {
-          logger.error("You cannot update MqDockerUp from within MqDockerUp. Please update MqDockerUp manually.");
-          return;
-        }
-
         // Store layer progress here
         const layerProgress: Record<string, { current: number; total: number }> = {};
         let lastPublishTime = 0;
