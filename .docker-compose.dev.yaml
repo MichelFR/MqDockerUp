@@ -1,8 +1,60 @@
 version: "3.9"
 services:
+  hello-world:
+    container_name: hello-world
+    image: "hello-world"
+    restart: unless-stopped
+    networks:
+      - custom_network
+
+  nginx-test-1:
+    container_name: nginx-test-1
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    networks:
+      - custom_network
+
+  nginx-test-2:
+    container_name: nginx-test-2
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    networks:
+      - custom_network
+
+  emqx:
+    container_name: emqx
+    image: emqx/emqx:latest
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "18083:18083"
+    depends_on:
+      - hello-world
+      - nginx-test-1
+      - nginx-test-2
+    networks:
+      - custom_network
+
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    restart: unless-stopped
+    volumes:
+      - ./config:/config
+    privileged: true
+    network_mode: host
+    depends_on:
+      emqx:
+        condition: service_started
+
   mqdockerup:
     container_name: mqdockerup
     build: ./
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./mqdockerup/data:/app/data
@@ -11,36 +63,12 @@ services:
       - MQTT_CONNECTIONURI=mqtt://emqx:1883
       - ACCESSTOKENS_GITHUB=
     depends_on:
-      - emqx
+      homeassistant:
+        condition: service_started
+      emqx:
+        condition: service_started
     networks:
       - custom_network
-
-  emqx:
-    container_name: emqx
-    image: emqx/emqx:latest
-    ports:
-      - "1883:1883"
-      - "18083:18083"
-    volumes:
-      - ./emqx/data:/opt/emqx/data
-      - ./emqx/etc:/opt/emqx/etc
-      - ./emqx/log:/opt/emqx/log
-    networks:
-      - custom_network
-
-  hello-world:
-    container_name: hello-world
-    image: "hello-world"
-    networks:
-      - custom_network
-
-  homeassistant:
-    container_name: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
-    volumes:
-      - ./config:/config
-    privileged: true
-    network_mode: host
 
 networks:
   custom_network:

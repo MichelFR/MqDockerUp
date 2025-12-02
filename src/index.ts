@@ -291,6 +291,11 @@ const containerEventHandler = _.debounce((eventName: string, data: { containerNa
   logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
 }, 300);
 
+// Debounced container check to avoid multiple rapid checks
+const debouncedContainerCheck = _.debounce(() => {
+  checkAndPublishContainerMessages();
+}, 2000); // Wait 2 seconds after last event before checking
+
 // Map Docker event action to a more human readable log string
 const eventMap: Record<string, string> = {
   create: 'created',
@@ -310,8 +315,8 @@ const eventMap: Record<string, string> = {
 Object.entries(eventMap).forEach(([eventName, logName]) => {
   DockerService.events.on(eventName, (data) => {
     containerEventHandler(logName, data);
-    // TODO: Improve this by not checking all containers every time
-    checkAndPublishContainerMessages();
+    // Use debounced check to batch multiple events that happen close together
+    debouncedContainerCheck();
   });
 });
 

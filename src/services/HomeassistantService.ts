@@ -363,9 +363,11 @@ export default class HomeassistantService {
     prefix: string = ""
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+    const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const defaultEntityId = prefix ? `${prefix}_${formatedImage}_${formatedName}` : `${formatedImage}_${formatedName}`;
 
     return {
-      default_entity_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      default_entity_id: defaultEntityId,
       name: `${name}`,
       unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}`,
@@ -400,9 +402,11 @@ export default class HomeassistantService {
     prefix: string = ""
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
+    const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const defaultEntityId = prefix ? `${prefix}_${formatedImage}_${formatedName}` : `${formatedImage}_${formatedName}`;
 
     return {
-      default_entity_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
+      default_entity_id: defaultEntityId,
       name: `${name}`,
       unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
       state_topic: `${config.mqtt.topic}/${formatedImage}/update`,

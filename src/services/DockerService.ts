@@ -5,6 +5,7 @@ import {ImageRegistryAdapterFactory} from "../registry-factory/ImageRegistryAdap
 import logger from "./LoggerService";
 import IgnoreService from "./IgnoreService";
 import HomeassistantService from "./HomeassistantService";
+import DatabaseService from "./DatabaseService";
 import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
 
@@ -314,8 +315,15 @@ export default class DockerService {
               try {
                 await container.stop();
                 await container.remove();
+                
+                // Remove the old container ID from updatingContainers immediately after removal
+                this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
+                
                 const newContainer = await DockerService.docker.createContainer(containerConfig);
                 await newContainer.start();
+
+                // Get the new container info for MQTT updates
+                const newContainerInfo = await newContainer.inspect();
 
                 // Remove old image
                 try {
@@ -323,7 +331,12 @@ export default class DockerService {
                     .getImage(oldImageId)
                     .remove({ force: true }, (err, data) => {
                       if (err) {
-                        logger.error("Error removing old image: " + err);
+                        // Ignore 409 conflict errors - image is still in use by another container
+                        if (err.statusCode === 409) {
+                          logger.debug("Old image still in use by other containers, skipping removal");
+                        } else {
+                          logger.error("Error removing old image: " + err);
+                        }
                       } else {
                         logger.info("Old image removed successfully");
                       }
@@ -333,11 +346,40 @@ export default class DockerService {
                 }
 
 
-                // Publish final 100% progress
-                await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, 100, false);
-                this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
+                // Publish final 100% progress with the NEW container info
+                await HomeassistantService.publishUpdateProgressMessage(newContainerInfo, mqttClient, 100, false);
 
-                return container;
+                // Clean up old container from Home Assistant and database
+                const newImage = newContainerInfo.Config.Image.split(":")[0];
+                const newTag = newContainerInfo.Config.Image.split(":")[1] || "latest";
+                const newName = newContainerInfo.Name.startsWith("/") ? newContainerInfo.Name.substring(1) : newContainerInfo.Name;
+                
+                // Get topics for old container and publish empty messages to remove from HA
+                await new Promise<void>((resolve) => {
+                  DatabaseService.getTopics(containerId, (err: any, topics: any) => {
+                    if (err) {
+                      logger.error("Error getting topics for cleanup: " + err);
+                      resolve();
+                      return;
+                    }
+                    
+                    // Publish empty messages to all old topics
+                    topics.forEach((topic: any) => {
+                      HomeassistantService.publishMessage(mqttClient, topic.topic, "", { retain: true, qos: 0 });
+                    });
+                    
+                    resolve();
+                  });
+                });
+                
+                // Now remove old container from database and add new one
+                await DatabaseService.deleteContainer(containerId);
+                await DatabaseService.addContainer(newContainerInfo.Id, newName, newImage, newTag);
+                
+                // Republish update message to show as up-to-date
+                await HomeassistantService.publishImageUpdateMessage(newContainerInfo, mqttClient);
+
+                return newContainer;
               } catch (error) {
                 logger.error("Error starting container with new image");
                 logger.error(error);
