@@ -364,7 +364,7 @@ export default class HomeassistantService {
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    const defaultEntityId = prefix ? `${prefix}_${formatedImage}_${formatedName}` : `${formatedImage}_${formatedName}`;
+    const defaultEntityId = `sensor.${prefix ? `${prefix}_` : ''}${formatedImage}_${formatedName}`;
 
     return {
       default_entity_id: defaultEntityId,
@@ -403,7 +403,7 @@ export default class HomeassistantService {
   ): object {
     const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    const defaultEntityId = prefix ? `${prefix}_${formatedImage}_${formatedName}` : `${formatedImage}_${formatedName}`;
+    const defaultEntityId = `update.${prefix ? `${prefix}_` : ''}${formatedImage}_${formatedName}`;
 
     return {
       default_entity_id: defaultEntityId,
