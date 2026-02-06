@@ -67,6 +67,7 @@ The MQTT configuration is specified in the `mqtt` section of `config.yaml`:
 |   `connectionUri` |  `MQTT_CONNECTIONURI`  | `string`  | `mqtt://127.0.0.1:1883` | The URL of the MQTT broker to connect to.                                                               |
 |           `topic` |      `MQTT_TOPIC`      | `string`  |      `mqdockerup`       | The MQTT topic to publish updates to.                                                                   |
 | `discoveryPrefix` | `MQTT_DISCOVERYPREFIX` | `string`  |     `homeassistant`     | The Prefix chosen in HA as `discovery prefix` (change only if you changed it in HA)                     |
+| `suggestedArea` | `MQTT_SUGGESTEDAREA` | `string`  |     `Docker`     | The Home Assistant suggested area to assign to created devices.                     |
 |        `clientId` |    `MQTT_CLIENTID`     | `string`  |      `mqdockerup`       | The MQTT client ID to use when connecting to the broker.                                                |
 |        `username` |    `MQTT_USERNAME`     | `string`  |          `ha`           | The username to use when connecting to the MQTT broker.                                                 |
 |        `password` |    `MQTT_PASSWORD`     | `string`  |          `""`           | The password to use when connecting to the MQTT broker.                                                 |
@@ -131,6 +132,7 @@ mqtt:
   connectionUri: "mqtt://127.0.0.1:1883"
   topic: "mqdockerup"
   discoveryPrefix: "homeassistant"
+  suggestedArea: "Docker"
   clientId: "mqdockerup"
   username: "ha"
   password: "12345678"
@@ -162,6 +164,7 @@ docker run -d \
   -e MQTT_CONNECTIONURI="mqtt://127.0.0.1:1883" \
   -e MQTT_TOPIC="mqdockerup" \
   -e MQTT_DISCOVERYPREFIX="homeassistant" \
+  -e MQTT_SUGGESTEDAREA="Docker" \
   -e MQTT_CLIENTID="mqdockerup" \
   -e MQTT_USERNAME="ha" \
   -e MQTT_PASSWORD="" \
@@ -195,6 +198,7 @@ services:
       MQTT_CONNECTIONURI: "mqtt://127.0.0.1:1883"
       MQTT_TOPIC: "mqdockerup"
       MQTT_DISCOVERYPREFIX: "homeassistant"
+      MQTT_SUGGESTEDAREA: "Docker"
       MQTT_CLIENTID: "mqdockerup"
       MQTT_USERNAME: "ha"
       MQTT_PASSWORD: ""
