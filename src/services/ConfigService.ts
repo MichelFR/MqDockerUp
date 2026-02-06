@@ -44,6 +44,7 @@ export default class ConfigService {
           interval: "", // Deprecated in next version in favor of containerCheckInterval
           imageUpdateInterval: "",
           containerCheckInterval: "5m",
+          containerCheckOnChanges: true,
           updateCheckInterval: "",
           prefix: "",
         },

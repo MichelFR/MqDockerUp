@@ -527,6 +527,3 @@ export default class DockerService {
     return null;
   }
 }
-
-// Start listening to Docker events
-DockerService.listenToDockerEvents();

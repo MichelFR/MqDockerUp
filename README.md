@@ -40,6 +40,7 @@ The main configuration is specified in the `main` section of `config.yaml`:
 |                     Name |     Environmental Variable     | Type     | Default | Description                                                                                                                                                                                                                           |
 | -----------------------: | :---------------------------: | :------- | :-----: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `containerCheckInterval` | `MAIN_CONTAINERCHECKINTERVAL` | `string` | `"5m"`  | The interval at which container are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and [`[unit]`](#unit).                                        |
+| `containerCheckOnChanges` | `MAIN_CONTAINERCHECKONCHANGES` | `boolean` | `true` | Trigger a container check when Docker emits container lifecycle events (`create`, `start`, `stop`, `destroy`, etc.). Set to `false` to only use the interval check. Recommended for environments with many containers to reduce MQTT message traffic. |
 |    `updateCheckInterval` |  `MAIN_UPDATECHECKINTERVAL`   | `string` |  `""`   | The interval at which updates are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and [`[unit]`](#unit) <br> (same of containerCheckInterval if `""`). |
 |                 `prefix` |         `MAIN_PREFIX`         | `string` |  `""`   | Parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.                                            |
 
@@ -126,6 +127,7 @@ Here some examples with all config defaults:
 ```yaml
 main:
   containerCheckInterval: "5m"
+  containerCheckOnChanges: true
   updateCheckInterval: ""
   prefix: ""
 mqtt:
@@ -159,6 +161,7 @@ docker run -d \
   --restart always \
   --name mqdockerup \
   -e MAIN_CONTAINERCHECKINTERVAL="5m" \
+  -e MAIN_CONTAINERCHECKONCHANGES=true \
   -e MAIN_UPDATECHECKINTERVAL="" \
   -e MAIN_PREFIX="" \
   -e MQTT_CONNECTIONURI="mqtt://127.0.0.1:1883" \
@@ -193,6 +196,7 @@ services:
     restart: always
     environment:
       MAIN_CONTAINERCHECKINTERVAL: "5m"
+      MAIN_CONTAINERCHECKONCHANGES: true
       MAIN_UPDATECHECKINTERVAL: ""
       MAIN_PREFIX: ""
       MQTT_CONNECTIONURI: "mqtt://127.0.0.1:1883"
