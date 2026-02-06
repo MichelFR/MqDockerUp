@@ -9,6 +9,7 @@ const config = ConfigService.getConfig();
 const packageJson = require("../../package");
 
 const haLegacy = ConfigService.autoParseEnvVariable(config.mqtt?.haLegacy)
+const suggestedArea = config.mqtt?.suggestedArea ?? "Docker";
 
 export default class HomeassistantService {
 
@@ -139,7 +140,7 @@ export default class HomeassistantService {
           model: `${image}:${tag}`,
           name: deviceName,
           sw_version: packageJson.version,
-          sa: "Docker",
+          sa: suggestedArea,
           identifiers: [`${image}_${tag}`],
         },
         icon: "mdi:restart",
@@ -163,7 +164,7 @@ export default class HomeassistantService {
           model: `${image}:${tag}`,
           name: deviceName,
           sw_version: packageJson.version,
-          sa: "Docker",
+          sa: suggestedArea,
           identifiers: [`${image}_${tag}`],
         },
         icon: "mdi:play",
@@ -187,7 +188,7 @@ export default class HomeassistantService {
           model: `${image}:${tag}`,
           name: deviceName,
           sw_version: packageJson.version,
-          sa: "Docker",
+          sa: suggestedArea,
           identifiers: [`${image}_${tag}`],
         },
         icon: "mdi:stop",
@@ -211,7 +212,7 @@ export default class HomeassistantService {
           model: `${image}:${tag}`,
           name: deviceName,
           sw_version: packageJson.version,
-          sa: "Docker",
+          sa: suggestedArea,
           identifiers: [`${image}_${tag}`],
         },
         icon: "mdi:pause",
@@ -235,7 +236,7 @@ export default class HomeassistantService {
           model: `${image}:${tag}`,
           name: deviceName,
           sw_version: packageJson.version,
-          sa: "Docker",
+          sa: suggestedArea,
           identifiers: [`${image}_${tag}`],
         },
         icon: "mdi:play-pause",
@@ -285,7 +286,7 @@ export default class HomeassistantService {
             model: `${image}:${tag}`,
             name: deviceName,
             sw_version: packageJson.version,
-            sa: "Docker",
+            sa: suggestedArea,
             identifiers: [`${image}_${tag}`],
           },
           icon: "mdi:arrow-up-bold-circle",
@@ -385,7 +386,7 @@ export default class HomeassistantService {
         model: `${image}:${tag}`,
         name: deviceName,
         sw_version: packageJson.version,
-        sa: "Docker",
+        sa: suggestedArea,
         identifiers: [`${image}_${tag}`],
       },
       icon: icon,
@@ -423,7 +424,7 @@ export default class HomeassistantService {
         model: `${image}:${tag}`,
         name: deviceName,
         sw_version: packageJson.version,
-        sa: "Docker",
+        sa: suggestedArea,
         identifiers: [`${image}_${tag}`],
       },
       icon: "mdi:arrow-up-bold-circle",

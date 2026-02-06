@@ -51,6 +51,7 @@ export default class ConfigService {
           connectionUri: "mqtt://localhost:1883",
           topic: "mqdockerup",
           discoveryPrefix: "homeassistant",
+          suggestedArea: "Docker",
           clientId: "mqdockerup",
           username: "ha",
           password: "",
