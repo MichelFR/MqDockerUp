@@ -1,6 +1,6 @@
 {
   "name": "mqdockerup",
-  "version": "1.23.0",
+  "version": "1.23.1",
   "description": "A Node.js application that pushes information about running Docker containers to an MQTT server.",
   "main": "index.js",
   "scripts": {
@@ -19,26 +19,26 @@
     "update"
   ],
   "dependencies": {
-    "axios": "^1.13.2",
+    "axios": "^1.13.4",
     "dockerode": "^4.0.9",
-    "figlet": "^1.9.4",
+    "figlet": "^1.10.0",
     "fs": "^0.0.1-security",
-    "lodash": "^4.17.21",
-    "mqtt": "^5.14.1",
+    "lodash": "^4.17.23",
+    "mqtt": "^5.15.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "winston": "^3.18.3",
+    "winston": "^3.19.0",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
-    "@types/dockerode": "^3.3.47",
+    "@types/dockerode": "^4.0.1",
     "@types/figlet": "^1.7.0",
     "@types/jest": "^30.0.0",
-    "@types/lodash": "^4.17.21",
+    "@types/lodash": "^4.17.23",
     "install": "^0.13.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
-    "npm": "^11.6.4",
+    "npm": "^11.8.0",
     "source-map-support": "^0.5.21",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
