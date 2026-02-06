@@ -11,6 +11,7 @@ require('source-map-support').install();
 
 const config = ConfigService.getConfig();
 const availabilityTopic = `${config.mqtt.topic}/availability`;
+const isContainerCheckOnChangesEnabled = ConfigService.autoParseEnvVariable(config.main.containerCheckOnChanges) !== false;
 
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
@@ -311,14 +312,22 @@ const eventMap: Record<string, string> = {
   restart: 'restarted',
 };
 
-// Register listeners for Docker events
-Object.entries(eventMap).forEach(([eventName, logName]) => {
-  DockerService.events.on(eventName, (data) => {
-    containerEventHandler(logName, data);
-    // Use debounced check to batch multiple events that happen close together
-    debouncedContainerCheck();
+if (isContainerCheckOnChangesEnabled) {
+  // Register listeners for Docker events
+  Object.entries(eventMap).forEach(([eventName, logName]) => {
+    DockerService.events.on(eventName, (data) => {
+      containerEventHandler(logName, data);
+      // Use debounced check to batch multiple events that happen close together
+      debouncedContainerCheck();
+    });
   });
-});
+
+  DockerService.listenToDockerEvents();
+} else {
+  logger.info(
+    "Container change checks are disabled (`main.containerCheckOnChanges=false`). This is recommended when monitoring many containers to reduce MQTT message traffic."
+  );
+}
 
 
 let isExiting = false;

@@ -1,6 +1,7 @@
 # Main Configuration
 main:
   containerCheckInterval: "5m"
+  containerCheckOnChanges: true
   updateCheckInterval: ""
   prefix: ""
 
