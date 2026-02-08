@@ -84,8 +84,6 @@ jobs:
             suffix: amd64
           - platform: linux/arm64
             suffix: arm64
-          - platform: linux/arm/v7
-            suffix: armv7
 
     steps:
       - name: Check out the repo
@@ -143,17 +141,14 @@ jobs:
           docker buildx imagetools create \
             --tag "${IMAGE}:${TAG}" \
             "${IMAGE}:${TAG}-amd64" \
-            "${IMAGE}:${TAG}-arm64" \
-            "${IMAGE}:${TAG}-armv7"
+            "${IMAGE}:${TAG}-arm64"
 
           docker buildx imagetools create \
             --tag "${IMAGE}:latest" \
             "${IMAGE}:latest-amd64" \
-            "${IMAGE}:latest-arm64" \
-            "${IMAGE}:latest-armv7"
+            "${IMAGE}:latest-arm64"
 
           docker buildx imagetools create \
             --tag "${IMAGE}:${SHA_TAG}" \
             "${IMAGE}:${SHA_TAG}-amd64" \
-            "${IMAGE}:${SHA_TAG}-arm64" \
-            "${IMAGE}:${SHA_TAG}-armv7"
+            "${IMAGE}:${SHA_TAG}-arm64"
