@@ -8,6 +8,8 @@ import HomeassistantService from "./HomeassistantService";
 import DatabaseService from "./DatabaseService";
 import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
+import { normalizeContainerEventAction } from "./ContainerEventService";
+import type { SupportedContainerEventAction } from "./ContainerEventService";
 
 // Add interface for mount types
 interface DockerMount {
@@ -21,6 +23,13 @@ interface DockerMount {
   Propagation: string;
 }
 
+export interface DockerContainerEventData {
+  containerName: string;
+  containerId: string;
+  action: string;
+  normalizedAction: SupportedContainerEventAction;
+}
+
 /**
  * Represents a Docker service for managing Docker containers and images.
  */
@@ -32,20 +41,6 @@ export default class DockerService {
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
-    const handledActions = new Set([
-      'create',
-      'start',
-      'die',
-      'health_status',
-      'stop',
-      'destroy',
-      'rename',
-      'update',
-      'pause',
-      'unpause',
-      'restart',
-    ]);
-
     DockerService.docker.getEvents({}, (err: any, data: any) => {
       if (err) {
         logger.error('Error while listening to docker events:', err);
@@ -59,10 +54,18 @@ export default class DockerService {
           if (event.Type === 'container') {
             const containerName = event.Actor.Attributes.name;
             const containerId = event.Actor.ID;
+            const normalizedAction = normalizeContainerEventAction(event.Action);
 
-            if (handledActions.has(event.Action)) {
+            if (normalizedAction) {
               logger.debug(`${event.Action}: ${containerName}`);
-              DockerService.events.emit(event.Action, { containerName, containerId });
+              const eventPayload: DockerContainerEventData = {
+                containerName,
+                containerId,
+                action: event.Action,
+                normalizedAction,
+              };
+
+              DockerService.events.emit(normalizedAction, eventPayload);
             } else {
               logger.debug(`${event.Action}: ${containerName}`);
             }

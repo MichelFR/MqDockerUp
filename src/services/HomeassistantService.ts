@@ -2,8 +2,12 @@ import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
 import DatabaseService from "./DatabaseService";
 import logger from "./LoggerService"
-import {ContainerInspectInfo, ContainerInfo} from "dockerode";
+import {ContainerInspectInfo} from "dockerode";
 import IgnoreService from "./IgnoreService";
+import {
+  getContainerSensorStateTopic,
+  getContainerUpdateStateTopic,
+} from "./HomeassistantEntityInventoryService";
 
 const config = ConfigService.getConfig();
 const packageJson = require("../../package");
@@ -31,7 +35,19 @@ export default class HomeassistantService {
    */
   public static async publishConfigMessages(client: any) {
     const containers = await DockerService.listContainers();
+    await this.publishConfigMessagesForContainers(client, containers);
+  }
 
+  /**
+   * Publishes the Home Assistant discovery messages for a single container.
+   * @param client The MQTT client
+   * @param container The Docker container inspect data
+   */
+  public static async publishConfigMessage(client: any, container: ContainerInspectInfo) {
+    await this.publishConfigMessagesForContainers(client, [container]);
+  }
+
+  private static async publishConfigMessagesForContainers(client: any, containers: ContainerInspectInfo[]) {
     for (const container of containers) {
       const prefix = config?.main.prefix || "";
       const image = container.Config.Image.split(":")[0];
@@ -46,10 +62,10 @@ export default class HomeassistantService {
       })
 
       if (!containerIsInDb) {
-        // Save container info to database
         logger.info(`Adding container ${containerName} to database`);
-        await DatabaseService.addContainer(container.Id, containerName, image, tag);
       }
+      // Keep metadata up to date for rename/update events.
+      await DatabaseService.addContainer(container.Id, containerName, image, tag);
 
       let topic, payload;
 
@@ -268,7 +284,6 @@ export default class HomeassistantService {
       this.publishMessage(client, topic, payload, {retain: true});
       if (!containerIsInDb) await DatabaseService.addTopic(topic, container.Id);
 
-
       if (!IgnoreService.ignoreUpdates(container)) {
         // Container manual update
         topic = `${discoveryPrefix}/button/${topicName}/docker_manual_update/config`;
@@ -371,7 +386,7 @@ export default class HomeassistantService {
       default_entity_id: defaultEntityId,
       name: `${name}`,
       unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
-      state_topic: `${config.mqtt.topic}/${formatedImage}`,
+      state_topic: getContainerSensorStateTopic(image),
       device_class: deviceClass,
       value_template: `{{ value_json.${valueName} }}`,
       availability:
@@ -410,7 +425,7 @@ export default class HomeassistantService {
       default_entity_id: defaultEntityId,
       name: `${name}`,
       unique_id: prefix ? `${prefix}/${image} ${name}` : `${image} ${name}`,
-      state_topic: `${config.mqtt.topic}/${formatedImage}/update`,
+      state_topic: getContainerUpdateStateTopic(image),
       device_class: "firmware",
       availability: [
         {
@@ -456,10 +471,9 @@ export default class HomeassistantService {
     }
 
     const image = container.Config.Image.split(":")[0];
-    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     // Update entity payload
-    const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+    const updateTopic = getContainerUpdateStateTopic(image);
     let updatePayload: any;
 
     updatePayload = {
@@ -495,10 +509,9 @@ export default class HomeassistantService {
     }
 
     const image = container?.Config?.Image?.split(":")[0];
-    const formatedImage = image?.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
 
     // Update entity payload
-    const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+    const updateTopic = getContainerUpdateStateTopic(image);
     let updatePayload: any;
 
     updatePayload = {
@@ -529,7 +542,6 @@ export default class HomeassistantService {
     }
 
     const image = container.Config.Image.split(":")[0];
-    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
     const repoDigests = imageInfo?.RepoDigests || [];
@@ -554,7 +566,7 @@ export default class HomeassistantService {
       }
 
       // Update entity payload
-      const updateTopic = `${config.mqtt.topic}/${formatedImage}/update`;
+      const updateTopic = getContainerUpdateStateTopic(image);
       const sourceRepo = await DockerService.getSourceRepo(image, tag);
 
       if (sourceRepo) {
@@ -623,7 +635,6 @@ export default class HomeassistantService {
    */
   public static async publishContainerMessage(container: ContainerInspectInfo, client: any) {
     const image = container.Config.Image.split(":")[0];
-    const formatedImage = image.replace(/[\/.:;,+*?@^$%#!&"'`|<>{}\[\]()-\s\u0000-\u001F\u007F]/g, "_");
     const tag = container.Config.Image.split(":")[1] || "latest";
     const containerName = container.Name.substring(1);
 
@@ -645,7 +656,7 @@ export default class HomeassistantService {
 
     const createdBy = DockerService.getCreatedBy(container);
 
-    const topic = `${config.mqtt.topic}/${formatedImage}`;
+    const topic = getContainerSensorStateTopic(image);
     const payload = {
       dockerImage: image,
       dockerTag: tag,

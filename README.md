@@ -40,7 +40,7 @@ The main configuration is specified in the `main` section of `config.yaml`:
 |                     Name |     Environmental Variable     | Type     | Default | Description                                                                                                                                                                                                                           |
 | -----------------------: | :---------------------------: | :------- | :-----: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `containerCheckInterval` | `MAIN_CONTAINERCHECKINTERVAL` | `string` | `"5m"`  | The interval at which container are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and [`[unit]`](#unit).                                        |
-| `containerCheckOnChanges` | `MAIN_CONTAINERCHECKONCHANGES` | `boolean` | `true` | Trigger a container check when Docker emits container lifecycle events (`create`, `start`, `stop`, `destroy`, etc.). Set to `false` to only use the interval check. Recommended for environments with many containers to reduce MQTT message traffic. |
+| `containerCheckOnChanges` | `MAIN_CONTAINERCHECKONCHANGES` | `boolean` | `true` | Enable Docker-event-driven targeted MQTT updates. When enabled, MqDockerUp listens to container events (`create`, `start`, `die`, `stop`, `destroy`, `rename`, `update`, `pause`, `unpause`, `restart`, `health_status:*`) and updates only the affected Home Assistant entity state topics instead of re-publishing all containers. Set to `false` to disable event-driven targeted updates and rely only on interval checks. |
 |    `updateCheckInterval` |  `MAIN_UPDATECHECKINTERVAL`   | `string` |  `""`   | The interval at which updates are checked and published/republished to the MQTT broker, must be in the format`[number][unit]`, where `[number]` is a positive integer and [`[unit]`](#unit) <br> (same of containerCheckInterval if `""`). |
 |                 `prefix` |         `MAIN_PREFIX`         | `string` |  `""`   | Parameter specifies a prefix to add to the MQTT topic when publishing updates. Enabling you to have multiple instances of MqDockerUp publishing to the same MQTT broker without conflicts.                                            |
 
@@ -49,6 +49,21 @@ The main configuration is specified in the `main` section of `config.yaml`:
 > * `main.interval`/`MAIN_INTERVAL` is now `main.containerCheckInterval`/`MAIN_CONTAINERCHECKINTERVAL`. 
 > * `main.imageUpdateInterval`/`MAIN_IMAGEUPDATEINTERVAL`  is now `main.updateCheckInterval`/`MAIN_UPDATECHECKINTERVAL`. 
 
+### Docker Event-Driven Updates
+
+When `main.containerCheckOnChanges=true`, MqDockerUp keeps an inventory of currently published Home Assistant discovery entities (sensor/button/update) and their state topics, then reacts to Docker container events with targeted publishes:
+
+| Docker event | MQTT behavior |
+| -----------: | :------------ |
+| `create` | Publish discovery config for that container, then publish its sensor state topic and update state topic (when updates are not ignored). |
+| `start` / `die` / `stop` / `pause` / `unpause` / `restart` / `health_status:*` | Publish only the affected container sensor state topic for immediate status/health refresh. |
+| `rename` | Re-publish discovery config for that container and publish its sensor state topic. |
+| `update` | Re-publish discovery config for that container, publish its sensor state topic, and refresh its update entity state topic (when updates are not ignored). |
+| `destroy` | Clean retained discovery topics for that container immediately and clean retained state topics when no remaining entity uses them. |
+
+Notes:
+- Docker event JSON payloads are not published as the primary update mechanism.
+- Interval-based checks (`containerCheckInterval` / `updateCheckInterval`) are still active as fallback and periodic reconciliation.
 
 
 ### <a name="Unit"></a>`[Unit]`

@@ -1,17 +1,31 @@
 import * as mqtt from "mqtt";
+import { ContainerInspectInfo } from "dockerode";
 import ConfigService from "./services/ConfigService";
-import DockerService from "./services/DockerService";
+import DockerService, { DockerContainerEventData } from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
 import DatabaseService from "./services/DatabaseService";
 import TimeService from "./services/TimeService";
-import logger from "./services/LoggerService"
-const _ = require('lodash');
+import logger from "./services/LoggerService";
+import IgnoreService from "./services/IgnoreService";
+import {
+  buildPublishedEntityInventoryForContainer,
+} from "./services/HomeassistantEntityInventoryService";
+import type {
+  DatabaseContainerRow,
+  HomeassistantEntityInventoryItem,
+} from "./services/HomeassistantEntityInventoryService";
+import {
+  getEventDrivenUpdatePlan,
+  SUPPORTED_CONTAINER_EVENT_ACTIONS,
+} from "./services/ContainerEventService";
+import type { SupportedContainerEventAction } from "./services/ContainerEventService";
 
-require('source-map-support').install();
+require("source-map-support").install();
 
 const config = ConfigService.getConfig();
 const availabilityTopic = `${config.mqtt.topic}/availability`;
-const isContainerCheckOnChangesEnabled = ConfigService.autoParseEnvVariable(config.main.containerCheckOnChanges) !== false;
+const isContainerCheckOnChangesEnabled =
+  ConfigService.autoParseEnvVariable(config.main.containerCheckOnChanges) !== false;
 
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
@@ -25,64 +39,204 @@ const client = mqtt.connect(config.mqtt.connectionUri, {
     topic: availabilityTopic,
     payload: "offline",
     qos: 1,
-    retain: true
-  }
+    retain: true,
+  },
 });
 
 logger.level = ConfigService?.getConfig()?.logs?.level;
 
 // Track connection state
 let isConnected = false;
-let reconnectCount = 0;
-const MAX_RECONNECT_DELAY = ConfigService.autoParseEnvVariable(config.mqtt.maxReconnectDelay) * 1000 || 300000;
 
 export const mqttClient = client;
+
+const publishedEntityInventoryByContainerId = new Map<
+  string,
+  HomeassistantEntityInventoryItem[]
+>();
+let dockerEventListenerStarted = false;
+
+const getDatabaseContainers = async (): Promise<DatabaseContainerRow[]> =>
+  new Promise((resolve, reject) => {
+    DatabaseService.getContainers((err: any, rows: DatabaseContainerRow[]) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      resolve(rows || []);
+    });
+  });
+
+const getDatabaseContainer = async (
+  containerId: string
+): Promise<DatabaseContainerRow | null> =>
+  new Promise((resolve, reject) => {
+    DatabaseService.getContainer(
+      containerId,
+      (err: any, row: DatabaseContainerRow | null) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(row || null);
+      }
+    );
+  });
+
+const getContainerTopics = async (
+  containerId: string
+): Promise<Array<{ topic: string }>> =>
+  new Promise((resolve, reject) => {
+    DatabaseService.getTopics(containerId, (err: any, rows: Array<{ topic: string }>) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      resolve(rows || []);
+    });
+  });
+
+const rebuildPublishedEntityInventory = async (): Promise<void> => {
+  const nextInventory = new Map<string, HomeassistantEntityInventoryItem[]>();
+  const dbContainers = await getDatabaseContainers();
+
+  for (const dbContainer of dbContainers) {
+    const topicRows = await getContainerTopics(dbContainer.id);
+    nextInventory.set(
+      dbContainer.id,
+      buildPublishedEntityInventoryForContainer(dbContainer, topicRows)
+    );
+  }
+
+  publishedEntityInventoryByContainerId.clear();
+  for (const [containerId, entities] of nextInventory.entries()) {
+    publishedEntityInventoryByContainerId.set(containerId, entities);
+  }
+};
+
+const clearRetainedTopic = async (topic: string): Promise<void> => {
+  await HomeassistantService.publishMessage(client, topic, "", {
+    retain: true,
+    qos: 0,
+  });
+};
+
+const cleanupContainerFromHomeAssistantAndDatabase = async (
+  containerId: string,
+  containerName?: string
+): Promise<void> => {
+  const discoveryTopics = await getContainerTopics(containerId);
+
+  if (discoveryTopics.length === 0) {
+    await DatabaseService.deleteContainer(containerId);
+    publishedEntityInventoryByContainerId.delete(containerId);
+    return;
+  }
+
+  for (const topic of discoveryTopics) {
+    await clearRetainedTopic(topic.topic);
+  }
+
+  let inventoryForRemovedContainer =
+    publishedEntityInventoryByContainerId.get(containerId);
+
+  if (!inventoryForRemovedContainer) {
+    const dbContainer = await getDatabaseContainer(containerId);
+    if (dbContainer) {
+      inventoryForRemovedContainer = buildPublishedEntityInventoryForContainer(
+        dbContainer,
+        discoveryTopics
+      );
+    }
+  }
+
+  if (inventoryForRemovedContainer) {
+    const stateTopicsToCleanup = [
+      ...new Set(
+        inventoryForRemovedContainer
+          .map((entity) => entity.stateTopic)
+          .filter((topic): topic is string => !!topic)
+      ),
+    ];
+
+    for (const stateTopic of stateTopicsToCleanup) {
+      const isSharedByOtherContainer = Array.from(
+        publishedEntityInventoryByContainerId.entries()
+      ).some(
+        ([otherContainerId, entities]) =>
+          otherContainerId !== containerId &&
+          entities.some((entity) => entity.stateTopic === stateTopic)
+      );
+
+      if (!isSharedByOtherContainer) {
+        await clearRetainedTopic(stateTopic);
+      }
+    }
+  }
+
+  await DatabaseService.deleteContainer(containerId);
+  publishedEntityInventoryByContainerId.delete(containerId);
+
+  if (containerName) {
+    logger.info(
+      `Removed missing container ${containerName} from Home Assistant and database.`
+    );
+  }
+};
+
+const inspectContainerWithRetry = async (
+  containerId: string,
+  retries: number = 3,
+  retryDelayMs: number = 300
+): Promise<ContainerInspectInfo | null> => {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await DockerService.docker.getContainer(containerId).inspect();
+    } catch (error: any) {
+      if (error?.statusCode !== 404) {
+        logger.error(`Failed to inspect container ${containerId}:`, error);
+        return null;
+      }
+
+      if (attempt < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+  }
+
+  return null;
+};
 
 // Check for new/old containers and publish updates
 const checkAndPublishContainerMessages = async (): Promise<void> => {
   logger.info("Checking for removed containers...");
   const containers = await DockerService.listContainers();
-  const runningContainerIds = containers.map(container => container.Id);
+  const runningContainerIds = new Set(containers.map((container) => container.Id));
 
-  // Get all container IDs in the database
-  DatabaseService.getContainers((err: any, rows: any) => {
-    if (err) {
-      logger.error(err);
-      return;
+  await rebuildPublishedEntityInventory();
+
+  const dbContainers = await getDatabaseContainers();
+  for (const dbContainer of dbContainers) {
+    if (!runningContainerIds.has(dbContainer.id)) {
+      await cleanupContainerFromHomeAssistantAndDatabase(dbContainer.id, dbContainer.name);
     }
-
-    // Iterate over each container in the database
-    rows.forEach((container: any) => {
-
-      // If the container is not in the running containers list, then it has stopped
-      if (!runningContainerIds.includes(container.id)) {
-        // Get the topics associated with this container
-        DatabaseService.getTopics(container.id, (err: any, topics: any) => {
-          if (err) {
-            logger.error(err);
-            return;
-          }
-
-          // Iterate over each topic and publish an empty message
-          topics.forEach((topic: any) => {
-            HomeassistantService.publishMessage(client, topic.topic, "", { retain: true, qos: 0 });
-          });
-
-          // Remove the container and its associated topics from the database
-          logger.info(`Removed missing container ${container.name} from Home Assistant and database.`);
-          DatabaseService.deleteContainer(container.id);
-        });
-      }
-    });
-  });
+  }
 
   logger.info("Checking for containers...");
   await HomeassistantService.publishConfigMessages(client);
   await HomeassistantService.publishAvailability(client, true);
   await HomeassistantService.publishContainerMessages(client);
+  await rebuildPublishedEntityInventory();
 
   logger.info("Finished checking for containers");
-  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.containerCheckInterval))}`);
+  logger.info(
+    `Next check in ${TimeService.formatDuration(
+      TimeService.parseDuration(config.main.containerCheckInterval)
+    )}`
+  );
 };
 
 const checkAndPublishImageUpdateMessages = async (): Promise<void> => {
@@ -90,39 +244,137 @@ const checkAndPublishImageUpdateMessages = async (): Promise<void> => {
   await HomeassistantService.publishImageUpdateMessages(client);
 
   logger.info("Finished checking for image updates");
-  logger.info(`Next check in ${TimeService.formatDuration(TimeService.parseDuration(config.main.updateCheckInterval))}`);
+  logger.info(
+    `Next check in ${TimeService.formatDuration(
+      TimeService.parseDuration(config.main.updateCheckInterval)
+    )}`
+  );
+};
+
+const handleContainerLifecycleEvent = async (
+  eventName: SupportedContainerEventAction,
+  data: DockerContainerEventData
+): Promise<void> => {
+  const eventPlan = getEventDrivenUpdatePlan(eventName);
+
+  if (eventPlan.cleanupRemovedContainer) {
+    await rebuildPublishedEntityInventory();
+    await cleanupContainerFromHomeAssistantAndDatabase(data.containerId, data.containerName);
+    return;
+  }
+
+  const retries = eventName === "create" ? 5 : 3;
+  const container = await inspectContainerWithRetry(data.containerId, retries);
+
+  if (!container) {
+    logger.warn(
+      `Skipping targeted update for ${eventName} event: container ${data.containerId} no longer exists.`
+    );
+    return;
+  }
+
+  if (eventPlan.publishConfig) {
+    await HomeassistantService.publishConfigMessage(client, container);
+  }
+
+  if (eventPlan.publishContainerState) {
+    await HomeassistantService.publishContainerMessage(container, client);
+  }
+
+  if (eventPlan.publishImageUpdateState && !IgnoreService.ignoreUpdates(container)) {
+    await HomeassistantService.publishImageUpdateMessage(container, client);
+  }
+
+  await rebuildPublishedEntityInventory();
+};
+
+const containerEventQueues = new Map<string, Promise<void>>();
+
+const queueContainerLifecycleEvent = (
+  eventName: SupportedContainerEventAction,
+  data: DockerContainerEventData
+) => {
+  const previousQueue = containerEventQueues.get(data.containerId) || Promise.resolve();
+
+  const nextQueue = previousQueue
+    .catch((error) => {
+      logger.error(
+        `Previous queued event failed for container ${data.containerId}:`,
+        error
+      );
+    })
+    .then(() => handleContainerLifecycleEvent(eventName, data))
+    .catch((error) => {
+      logger.error(
+        `Failed to handle container event ${eventName} for ${data.containerId}:`,
+        error
+      );
+    });
+
+  containerEventQueues.set(data.containerId, nextQueue);
+
+  nextQueue.finally(() => {
+    if (containerEventQueues.get(data.containerId) === nextQueue) {
+      containerEventQueues.delete(data.containerId);
+    }
+  });
 };
 
 let containerCheckingIntervalId: NodeJS.Timeout;
 
 const startContainerCheckingInterval = async () => {
-  logger.verbose(`Setting up startContainerCheckingInterval with value ${config.main.containerCheckInterval}`);
-  containerCheckingIntervalId = setInterval(checkAndPublishContainerMessages, TimeService.parseDuration(config.main.containerCheckInterval));
+  logger.verbose(
+    `Setting up startContainerCheckingInterval with value ${config.main.containerCheckInterval}`
+  );
+
+  if (containerCheckingIntervalId) {
+    clearInterval(containerCheckingIntervalId);
+  }
+
+  containerCheckingIntervalId = setInterval(
+    checkAndPublishContainerMessages,
+    TimeService.parseDuration(config.main.containerCheckInterval)
+  );
 };
 
 let imageCheckingInterval: NodeJS.Timeout;
 
 const startImageCheckingInterval = async () => {
-  logger.verbose(`Setting up startImageCheckingInterval with value ${config.main.updateCheckInterval}`);
-  imageCheckingInterval = setInterval(checkAndPublishImageUpdateMessages, TimeService.parseDuration(config.main.updateCheckInterval));
+  logger.verbose(
+    `Setting up startImageCheckingInterval with value ${config.main.updateCheckInterval}`
+  );
+
+  if (imageCheckingInterval) {
+    clearInterval(imageCheckingInterval);
+  }
+
+  imageCheckingInterval = setInterval(
+    checkAndPublishImageUpdateMessages,
+    TimeService.parseDuration(config.main.updateCheckInterval)
+  );
 };
 
 // Connected to MQTT broker
-client.on('connect', async function () {
-  logger.info('MQTT client successfully connected');
+client.on("connect", async function () {
+  logger.info("MQTT client successfully connected");
+  isConnected = true;
 
   // Publish availability as online
   await HomeassistantService.publishAvailability(client, true);
 
   if (config?.ignore?.containers == "*") {
-    logger.warn('Skipping setup of container checking cause all containers is ignored `ignore.containers="*"`.')
+    logger.warn(
+      'Skipping setup of container checking cause all containers is ignored `ignore.containers="*"`.'
+    );
   } else {
     await checkAndPublishContainerMessages();
     startContainerCheckingInterval();
   }
 
   if (config?.ignore?.updates == "*") {
-    logger.warn('Skipping setup of image update checking cause all containers update is ignored `ignore.updates="*"`.')
+    logger.warn(
+      'Skipping setup of image update checking cause all containers update is ignored `ignore.updates="*"`.'
+    );
   } else {
     await checkAndPublishImageUpdateMessages();
     startImageCheckingInterval();
@@ -135,46 +387,62 @@ client.on('connect', async function () {
   client.subscribe(`${config.mqtt.topic}/pause`);
   client.subscribe(`${config.mqtt.topic}/unpause`);
   client.subscribe(`${config.mqtt.topic}/manualUpdate`);
+
+  if (isContainerCheckOnChangesEnabled && !dockerEventListenerStarted) {
+    await rebuildPublishedEntityInventory();
+    DockerService.listenToDockerEvents();
+    dockerEventListenerStarted = true;
+  }
 });
 
-client.on('error', function (err) {
-  logger.error('MQTT client connection error: ', err);
+client.on("offline", () => {
+  isConnected = false;
 });
-// Update-Handler for the /update message from MQTT
+
+client.on("close", () => {
+  isConnected = false;
+});
+
+client.on("error", function (err) {
+  logger.error("MQTT client connection error: ", err);
+});
+
+const parseJsonMessage = (message: any): any | null => {
+  try {
+    return JSON.parse(message);
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
+    } else {
+      logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
+    }
+    return null;
+  }
+};
+
+// Update-Handler for MQTT command topics
 client.on("message", async (topic: string, message: any) => {
   if (topic == `${config.mqtt.topic}/update`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
-    // Update-Handler for the /update message from MQTT
-    // This is triggered by the Home Assistant button in the UI to update a container
+    // This is triggered by the Home Assistant update entity in the UI
     if (data?.containerId) {
       const image = data?.image;
       logger.info(`Got update message for ${image}`);
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
-      await checkAndPublishContainerMessages();
-      await checkAndPublishImageUpdateMessages();
+
+      if (!isContainerCheckOnChangesEnabled) {
+        await checkAndPublishContainerMessages();
+        await checkAndPublishImageUpdateMessages();
+      }
     }
   } else if (topic == `${config.mqtt.topic}/restart`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
@@ -184,17 +452,12 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Restarted container");
     }
 
-    await checkAndPublishContainerMessages();
+    if (!isContainerCheckOnChangesEnabled) {
+      await checkAndPublishContainerMessages();
+    }
   } else if (topic == `${config.mqtt.topic}/start`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
@@ -204,17 +467,12 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Started container");
     }
 
-    await checkAndPublishContainerMessages();
+    if (!isContainerCheckOnChangesEnabled) {
+      await checkAndPublishContainerMessages();
+    }
   } else if (topic == `${config.mqtt.topic}/stop`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
@@ -224,17 +482,12 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Stopped container");
     }
 
-    await checkAndPublishContainerMessages();
+    if (!isContainerCheckOnChangesEnabled) {
+      await checkAndPublishContainerMessages();
+    }
   } else if (topic == `${config.mqtt.topic}/pause`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
@@ -244,17 +497,12 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Paused container");
     }
 
-    await checkAndPublishContainerMessages();
+    if (!isContainerCheckOnChangesEnabled) {
+      await checkAndPublishContainerMessages();
+    }
   } else if (topic == `${config.mqtt.topic}/unpause`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
@@ -264,17 +512,12 @@ client.on("message", async (topic: string, message: any) => {
       logger.info("Unpaused container");
     }
 
-    await checkAndPublishContainerMessages();
+    if (!isContainerCheckOnChangesEnabled) {
+      await checkAndPublishContainerMessages();
+    }
   } else if (topic == `${config.mqtt.topic}/manualUpdate`) {
-    let data;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.warn(`Failed to parse message: ${message}. Error: ${error.message}`);
-      } else {
-        logger.warn(`Failed to parse message: ${message}. Error: ${String(error)}`);
-      }
+    const data = parseJsonMessage(message);
+    if (!data) {
       return;
     }
 
@@ -282,53 +525,43 @@ client.on("message", async (topic: string, message: any) => {
       logger.info(`Got manual update message for ${data?.containerId}`);
       await DockerService.updateContainer(data?.containerId);
       logger.info("Updated container");
-      await checkAndPublishContainerMessages();
+
+      if (!isContainerCheckOnChangesEnabled) {
+        await checkAndPublishContainerMessages();
+      }
     }
   }
 });
 
-// Docker event handlers
-const containerEventHandler = _.debounce((eventName: string, data: { containerName: string, containerId: string }) => {
-  logger.info(`Container ${eventName}: ${data.containerName} (${data.containerId})`);
-}, 300);
-
-// Debounced container check to avoid multiple rapid checks
-const debouncedContainerCheck = _.debounce(() => {
-  checkAndPublishContainerMessages();
-}, 2000); // Wait 2 seconds after last event before checking
-
-// Map Docker event action to a more human readable log string
-const eventMap: Record<string, string> = {
-  create: 'created',
-  start: 'started',
-  die: 'died',
-  health_status: 'health_status',
-  stop: 'stopped',
-  destroy: 'destroyed',
-  rename: 'renamed',
-  update: 'updated',
-  pause: 'paused',
-  unpause: 'unpaused',
-  restart: 'restarted',
+const eventLogMap: Record<SupportedContainerEventAction, string> = {
+  create: "created",
+  start: "started",
+  die: "died",
+  health_status: "health status changed",
+  stop: "stopped",
+  destroy: "destroyed",
+  rename: "renamed",
+  update: "updated",
+  pause: "paused",
+  unpause: "unpaused",
+  restart: "restarted",
 };
 
 if (isContainerCheckOnChangesEnabled) {
-  // Register listeners for Docker events
-  Object.entries(eventMap).forEach(([eventName, logName]) => {
-    DockerService.events.on(eventName, (data) => {
-      containerEventHandler(logName, data);
-      // Use debounced check to batch multiple events that happen close together
-      debouncedContainerCheck();
+  // Register listeners for Docker events with targeted updates.
+  SUPPORTED_CONTAINER_EVENT_ACTIONS.forEach((eventName) => {
+    DockerService.events.on(eventName, (data: DockerContainerEventData) => {
+      logger.info(
+        `Container ${eventLogMap[eventName]}: ${data.containerName} (${data.containerId})`
+      );
+      queueContainerLifecycleEvent(eventName, data);
     });
   });
-
-  DockerService.listenToDockerEvents();
 } else {
   logger.info(
-    "Container change checks are disabled (`main.containerCheckOnChanges=false`). This is recommended when monitoring many containers to reduce MQTT message traffic."
+    "Container change checks are disabled (`main.containerCheckOnChanges=false`)."
   );
 }
-
 
 let isExiting = false;
 const exitHandler = async (exitCode: number, error?: any) => {
@@ -339,11 +572,11 @@ const exitHandler = async (exitCode: number, error?: any) => {
 
   try {
     logger.info("Shutting down MqDockerUp...");
-    
+
     if (isConnected) {
       await HomeassistantService.publishAvailability(client, false);
     }
-    
+
     const updatingContainers = DockerService.updatingContainers;
 
     if (updatingContainers.length > 0) {
@@ -361,14 +594,17 @@ const exitHandler = async (exitCode: number, error?: any) => {
         logger.info("MQTT connection closed successfully");
         resolve();
       });
-      
+
       setTimeout(() => {
         logger.warn("MQTT connection close timed out");
         resolve();
       }, 2000);
     });
 
-    let message = exitCode === 0 ? `MqDockerUp gracefully stopped` : `MqDockerUp stopped due to an error`;
+    let message =
+      exitCode === 0
+        ? `MqDockerUp gracefully stopped`
+        : `MqDockerUp stopped due to an error`;
 
     if (error) {
       logger.error(message);
