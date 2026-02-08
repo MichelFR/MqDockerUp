@@ -8,6 +8,9 @@ on:
       - package.json
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: micrib/mqdockerup
+
 jobs:
   create-release:
     name: Create GitHub release
@@ -17,6 +20,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release-state.outputs.release_created }}
       tag_name: ${{ steps.version.outputs.tag_name }}
+      sha_tag: ${{ steps.version.outputs.sha_tag }}
 
     steps:
       - name: Check out the repo
@@ -29,8 +33,10 @@ jobs:
         run: |
           VERSION="$(jq -r '.version' package.json)"
           TAG_NAME="v${VERSION}"
+          SHA_TAG="sha-${GITHUB_SHA::7}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Check if release already exists
         id: release-check
@@ -62,11 +68,21 @@ jobs:
             echo "release_created=false" >> "$GITHUB_OUTPUT"
           fi
 
-  docker-image:
-    name: Push Docker image to Docker Hub
+  build-arch-images:
+    name: Build and push (${{ matrix.platform }})
     runs-on: ubuntu-latest
     needs: create-release
     if: needs.create-release.outputs.release_created == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            suffix: amd64
+          - platform: linux/arm64
+            suffix: arm64
+          - platform: linux/arm/v7
+            suffix: armv7
 
     steps:
       - name: Check out the repo
@@ -84,23 +100,57 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: micrib/mqdockerup
-          tags: |
-            type=raw,value=${{ needs.create-release.outputs.tag_name }}
-            type=raw,value=latest
-            type=sha
-          flavor: |
-            latest=false
-
-      - name: Build and push Docker image
+      - name: Build and push platform image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          platforms: ${{ matrix.platform }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ needs.create-release.outputs.tag_name }}-${{ matrix.suffix }}
+            ${{ env.IMAGE_NAME }}:latest-${{ matrix.suffix }}
+            ${{ env.IMAGE_NAME }}:${{ needs.create-release.outputs.sha_tag }}-${{ matrix.suffix }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish-multi-arch-manifests:
+    name: Publish multi-arch manifests
+    runs-on: ubuntu-latest
+    needs:
+      - create-release
+      - build-arch-images
+    if: needs.create-release.outputs.release_created == 'true'
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create and push release manifests
+        run: |
+          IMAGE="${{ env.IMAGE_NAME }}"
+          TAG="${{ needs.create-release.outputs.tag_name }}"
+          SHA_TAG="${{ needs.create-release.outputs.sha_tag }}"
+
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${TAG}" \
+            "${IMAGE}:${TAG}-amd64" \
+            "${IMAGE}:${TAG}-arm64" \
+            "${IMAGE}:${TAG}-armv7"
+
+          docker buildx imagetools create \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}:latest-amd64" \
+            "${IMAGE}:latest-arm64" \
+            "${IMAGE}:latest-armv7"
+
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${SHA_TAG}" \
+            "${IMAGE}:${SHA_TAG}-amd64" \
+            "${IMAGE}:${SHA_TAG}-arm64" \
+            "${IMAGE}:${SHA_TAG}-armv7"
