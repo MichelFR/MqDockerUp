@@ -8,6 +8,9 @@ on:
         required: true
         default: 'latest'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Push Docker image to Docker Hub

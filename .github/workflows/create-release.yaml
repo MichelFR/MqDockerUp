@@ -8,6 +8,9 @@ on:
       - package.json
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   IMAGE_NAME: micrib/mqdockerup
 
