@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:lts-alpine
 
 # Install 'tini g++ make py3-pip'
 RUN apk add --no-cache tini g++ make py3-pip
