@@ -3,7 +3,7 @@
 
 <br>
 
-[![Create Release](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/release-checker.yml)
+[![Create Release](https://github.com/MichelFR/MqDockerUp/actions/workflows/create-release.yaml/badge.svg?branch=main)](https://github.com/MichelFR/MqDockerUp/actions/workflows/create-release.yaml)
 
 # MqDockerUp
 MqDockerUp is a tool that allows you to monitor and update your docker containers using MQTT and homeassistant. It can publish information about your containers, such as name, status, image, ports, etc., to an MQTT broker, and create or update corresponding entities in homeassistant. You can also send commands to start, stop, pause, unpause, restart, or remove your containers via MQTT or homeassistant. It even creates update entities in Homeassistant to make it easy to update your running containers. MqDockerUp is easy to set up and configure, and supports multiple platforms and architectures. With MqDockerUp, you can have a unified and convenient way to manage your docker containers from anywhere.
