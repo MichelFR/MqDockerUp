@@ -36,7 +36,7 @@
     "@types/lodash": "^4.17.23",
     "install": "^0.13.0",
     "jest": "^30.2.0",
-    "nodemon": "^3.1.11",
+    "nodemon": "^3.1.14",
     "npm": "^11.10.1",
     "source-map-support": "^0.5.21",
     "ts-jest": "^29.4.6",
