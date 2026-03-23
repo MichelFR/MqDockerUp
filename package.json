@@ -27,7 +27,7 @@
     "mqtt": "^5.15.0",
     "sqlite3": "^5.1.7",
     "winston": "^3.19.0",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@types/dockerode": "^4.0.1",
