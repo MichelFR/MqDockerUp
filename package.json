@@ -19,7 +19,7 @@
     "update"
   ],
   "dependencies": {
-    "axios": "^1.14.0",
+    "axios": "^1.14.1",
     "dockerode": "^4.0.10",
     "figlet": "^1.11.0",
     "fs": "^0.0.1-security",
