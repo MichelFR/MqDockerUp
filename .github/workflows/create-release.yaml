@@ -52,14 +52,69 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create release with generated notes
+      - name: Build release notes
+        id: notes
+        if: steps.release-check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+
+          # Resolve the previous release tag so we can scope the commit list.
+          previous_tag="$(gh release list --repo "${GITHUB_REPOSITORY}" --limit 1 --json tagName --jq '.[0].tagName' || true)"
+
+          # GitHub's auto-generated notes only mention PRs. Capture them as the base.
+          generated_notes="$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="${TAG_NAME}" \
+            -f target_commitish="${GITHUB_SHA}" \
+            ${previous_tag:+-f previous_tag_name="${previous_tag}"} \
+            --jq '.body')"
+
+          # Enumerate commits since the previous tag that are NOT linked to a PR
+          # so direct pushes to main still show up in the release notes.
+          direct_commits=""
+          if [ -n "${previous_tag}" ]; then
+            commit_range="${previous_tag}..HEAD"
+          else
+            commit_range="HEAD"
+          fi
+
+          while IFS=$'\t' read -r sha subject; do
+            [ -z "${sha}" ] && continue
+            pr_count="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${sha}/pulls" --jq 'length' 2>/dev/null || echo 0)"
+            if [ "${pr_count}" = "0" ]; then
+              short_sha="${sha:0:7}"
+              author_login="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${sha}" --jq '.author.login // ""' 2>/dev/null || true)"
+              if [ -n "${author_login}" ]; then
+                by_clause=" by @${author_login}"
+              else
+                by_clause=""
+              fi
+              direct_commits+="* ${subject}${by_clause} in [\`${short_sha}\`](https://github.com/${GITHUB_REPOSITORY}/commit/${sha})"$'\n'
+            fi
+          done < <(git log "${commit_range}" --no-merges --pretty=format:'%H%x09%s')
+
+          {
+            echo "${generated_notes}"
+            if [ -n "${direct_commits}" ]; then
+              echo
+              echo "### 📌 Direct Commits"
+              printf '%s' "${direct_commits}"
+            fi
+          } > release-notes.md
+
+      - name: Create release
         if: steps.release-check.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.version.outputs.tag_name }}" \
             --title "${{ steps.version.outputs.tag_name }}" \
-            --generate-notes \
+            --notes-file release-notes.md \
             --target "${GITHUB_SHA}"
 
       - name: Record release creation state
