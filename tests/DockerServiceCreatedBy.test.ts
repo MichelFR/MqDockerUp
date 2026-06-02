@@ -24,3 +24,33 @@ describe('DockerService.getCreatedBy', () => {
     expect(DockerService.getCreatedBy(container)).toBe('Docker');
   });
 });
+
+describe("DockerService.splitImageReference", () => {
+  test("parses normal image tags", () => {
+    expect(DockerService.splitImageReference("ghcr.io/esphome/esphome:latest")).toEqual({
+      image: "ghcr.io/esphome/esphome",
+      tag: "latest",
+    });
+  });
+
+  test("preserves registry ports when parsing image tags", () => {
+    expect(DockerService.splitImageReference("registry.local:5000/team/app:1.2.3")).toEqual({
+      image: "registry.local:5000/team/app",
+      tag: "1.2.3",
+    });
+  });
+
+  test("handles digest-pinned image references", () => {
+    expect(DockerService.splitImageReference("ghcr.io/example/app@sha256:abcdef123456")).toEqual({
+      image: "ghcr.io/example/app",
+      tag: "latest",
+    });
+  });
+
+  test("falls back safely when image references are missing", () => {
+    expect(DockerService.splitImageReference(undefined)).toEqual({
+      image: "unknown",
+      tag: "latest",
+    });
+  });
+});

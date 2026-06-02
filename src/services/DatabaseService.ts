@@ -1,8 +1,13 @@
 import logger from "../services/LoggerService";
 import Database from "better-sqlite3";
+import fs from "fs";
+import path from "path";
+
+const databasePath = path.join(process.cwd(), 'data', 'database.db');
+fs.mkdirSync(path.dirname(databasePath), {recursive: true});
 
 export default class DatabaseService {
-    static db: Database.Database = new Database('./data/database.db');
+    static db: Database.Database = new Database(databasePath);
 
     /**
      * Initializes the database.
@@ -14,6 +19,8 @@ export default class DatabaseService {
             this.db.exec('CREATE TABLE IF NOT EXISTS containers(id TEXT PRIMARY KEY, name TEXT, image TEXT, tag TEXT)');
             this.db.exec('CREATE TABLE IF NOT EXISTS topics(id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT, containerId TEXT)');
             this.db.exec('CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT)');
+            this.db.exec('DELETE FROM topics WHERE id NOT IN (SELECT MIN(id) FROM topics GROUP BY topic, containerId)');
+            this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_topics_topic_containerId ON topics(topic, containerId)');
             logger.info('Database initialized successfully');
         } catch (err: any) {
             logger.error(err.message);
@@ -40,7 +47,7 @@ export default class DatabaseService {
      */
     public static async addTopic(topic: string, containerId: string) {
         this.db
-            .prepare("INSERT INTO topics(topic, containerId) VALUES(?, ?)")
+            .prepare("INSERT OR IGNORE INTO topics(topic, containerId) VALUES(?, ?)")
             .run(topic, containerId);
     }
 
@@ -110,6 +117,21 @@ export default class DatabaseService {
         } catch (err) {
             callback(err, null);
         }
+    }
+
+    public static getTopicsForContainer(containerId: string): Promise<{ topic: string }[]> {
+        return new Promise((resolve, reject) => {
+            try {
+                const rows = this.db.prepare('SELECT topic FROM topics WHERE containerId = ?').all(containerId) as { topic: string }[];
+                resolve(rows);
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    public static async deleteTopic(topic: string, containerId: string) {
+        this.db.prepare('DELETE FROM topics WHERE topic = ? AND containerId = ?').run(topic, containerId);
     }
 
     /**

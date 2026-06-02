@@ -30,6 +30,29 @@ export default class DockerService {
   public static updatingContainers: string[] = [];
   public static SourceUrlCache = new Map<string, string>();
 
+  public static splitImageReference(reference: string | null | undefined): { image: string; tag: string } {
+    if (!reference) {
+      return { image: "unknown", tag: "latest" };
+    }
+
+    const digestIndex = reference.indexOf("@");
+    const imageReference = digestIndex === -1 ? reference : reference.substring(0, digestIndex);
+    const lastSlashIndex = imageReference.lastIndexOf("/");
+    const lastColonIndex = imageReference.lastIndexOf(":");
+
+    if (lastColonIndex > lastSlashIndex) {
+      return {
+        image: imageReference.substring(0, lastColonIndex),
+        tag: imageReference.substring(lastColonIndex + 1) || "latest",
+      };
+    }
+
+    return {
+      image: imageReference,
+      tag: "latest",
+    };
+  }
+
   // Start listening to Docker events
   public static listenToDockerEvents() {
     const handledActions = new Set([
@@ -344,8 +367,7 @@ export default class DockerService {
                 await HomeassistantService.publishUpdateProgressMessage(newContainerInfo, mqttClient, 100, false);
 
                 // Clean up old container from Home Assistant and database
-                const newImage = newContainerInfo.Config.Image.split(":")[0];
-                const newTag = newContainerInfo.Config.Image.split(":")[1] || "latest";
+                const {image: newImage, tag: newTag} = DockerService.splitImageReference(newContainerInfo.Config?.Image);
                 const newName = newContainerInfo.Name.startsWith("/") ? newContainerInfo.Name.substring(1) : newContainerInfo.Name;
                 
                 // Get topics for old container and publish empty messages to remove from HA
