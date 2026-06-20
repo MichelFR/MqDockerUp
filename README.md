@@ -110,6 +110,17 @@ The ignore configuration is specified in the `ignore` section of `config.yaml`:
 | `containers` |  `IGNORE_CONTAINERS`  | `string` |  `""`   | A comma separated list of container to be ignored in the check, or `*` to ignore all containers .                   |
 |    `updates` |   `IGNORE_UPDATES`    | `string` |  `""`   | A comma separated list of container which updates should be ignored in the check, or `*` to ignore all containers . |
 
+### Monitor (Whitelist) Configuration
+
+The monitor configuration is specified in the `monitor` section of `config.yaml`. It is the inverse of the ignore configuration: when set, **only** the listed containers are monitored and every other container is ignored. This is handy when you want to track just a few of your containers instead of denylisting all the others.
+
+Leave a value empty (the default) or set it to `*` to monitor all containers. An explicit ignore (via the `ignore` config or an `mqdockerup.ignore_*` label) always takes precedence over the whitelist. Container names are matched exactly.
+
+|         Name | Environmental Variable |   Type   | Default | Description                                                                                                                       |
+| -----------: | :-------------------: | :------: | :-----: | :-------------------------------------------------------------------------------------------------------------------------------- |
+| `containers` |  `MONITOR_CONTAINERS`  | `string` |  `""`   | A comma separated list of the only containers to be monitored. Empty or `*` monitors all containers.                              |
+|    `updates` |   `MONITOR_UPDATES`    | `string` |  `""`   | A comma separated list of the only containers whose updates should be checked. Empty or `*` checks updates for all containers.    |
+
 ### Logs Configuration
 
 The ignore configuration is specified in the `logs` section of `config.yaml`:
@@ -147,6 +158,9 @@ accessTokens:
 ignore:
   containers: "some,container"
   updates: "other,container"
+monitor:
+  containers: ""
+  updates: ""
 logs:
   level: "info"
 ```
@@ -178,6 +192,8 @@ docker run -d \
   -e ACCESSTOKENS_GITHUB="" \
   -e IGNORE_CONTAINERS="" \
   -e IGNORE_UPDATES="" \
+  -e MONITOR_CONTAINERS="" \
+  -e MONITOR_UPDATES="" \
   -e LOGS_LEVEL="info" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v your/path/data:/app/data/ \
@@ -213,6 +229,8 @@ services:
       ACCESSTOKENS_GITHUB: ""
       IGNORE_CONTAINERS: ""
       IGNORE_UPDATES: ""
+      MONITOR_CONTAINERS: ""
+      MONITOR_UPDATES: ""
       LOGS_LEVEL: "info"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -229,6 +247,8 @@ You can use some of these labels on individual containers to apply to them the e
 | -----------------------------: | :-------: | :------: | :---------------------------------------------------------------------------------------- |
 |  `mqdockerup.ignore_container` | `boolean` | Optional | `true` to ignore the container that have this label, `false` to not ignore                |
 |    `mqdockerup.ignore_updates` | `boolean` | Optional | `true` to ignore the updates of the container that have this label, `false` to not ignore |
+|  `mqdockerup.monitor_container` | `boolean` | Optional | `true` to monitor this container when a whitelist (`MONITOR_CONTAINERS`) is active, regardless of the list |
+|    `mqdockerup.monitor_updates` | `boolean` | Optional | `true` to check this container's updates when a whitelist (`MONITOR_UPDATES`) is active, regardless of the list |
 
 
 ## Screenshots

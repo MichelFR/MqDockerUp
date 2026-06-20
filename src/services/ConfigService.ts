@@ -69,6 +69,10 @@ export default class ConfigService {
           containers: "",
           updates: ""
         },
+        monitor: {
+          containers: "",
+          updates: ""
+        },
         logs: {
           level: "info"
         }
@@ -103,6 +107,16 @@ export default class ConfigService {
         const envKey = process.env[`IGNORE_${key.toUpperCase()}`];
         if (envKey !== undefined) {
           config.ignore[key] = envKey;
+        }
+      }
+
+      // Ensure the section exists so env-only setups (or configs predating
+      // this option) don't crash when a MONITOR_* variable is provided.
+      config.monitor = config.monitor || {};
+      for (const key of Object.keys(defaults.monitor)) {
+        const envKey = process.env[`MONITOR_${key.toUpperCase()}`];
+        if (envKey !== undefined) {
+          config.monitor[key] = envKey;
         }
       }
 

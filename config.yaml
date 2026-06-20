@@ -29,6 +29,13 @@ ignore:
   containers: ""
   updates: ""
 
+# Monitor (whitelist) Configuration
+# When set, only the listed containers are monitored/checked for updates.
+# Leave empty (or use "*") to monitor all containers (default behavior).
+monitor:
+  containers: ""
+  updates: ""
+
 # Logging Configuration
 logs:
   level: "info"
