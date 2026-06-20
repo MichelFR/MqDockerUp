@@ -13,6 +13,7 @@ export default class DatabaseService {
             logger.info('Connected to the database.');
             this.db.exec('CREATE TABLE IF NOT EXISTS containers(id TEXT PRIMARY KEY, name TEXT, image TEXT, tag TEXT)');
             this.db.exec('CREATE TABLE IF NOT EXISTS topics(id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT, containerId TEXT)');
+            this.db.exec('CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT)');
             logger.info('Database initialized successfully');
         } catch (err: any) {
             logger.error(err.message);
@@ -41,6 +42,33 @@ export default class DatabaseService {
         this.db
             .prepare("INSERT INTO topics(topic, containerId) VALUES(?, ?)")
             .run(topic, containerId);
+    }
+
+    /**
+     * Gets all stored topics across every container.
+     * @return An array of { topic, containerId } rows.
+     */
+    public static getAllTopics(): any[] {
+        return this.db.prepare('SELECT * FROM topics').all();
+    }
+
+    /**
+     * Reads a value from the key/value meta table (used for one-off migrations).
+     * @param key The meta key
+     * @return The stored value, or undefined if not set
+     */
+    public static getMeta(key: string): string | undefined {
+        const row: any = this.db.prepare('SELECT value FROM meta WHERE key = ?').get(key);
+        return row?.value;
+    }
+
+    /**
+     * Writes a value to the key/value meta table.
+     * @param key The meta key
+     * @param value The value to store
+     */
+    public static setMeta(key: string, value: string) {
+        this.db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)').run(key, value);
     }
 
     /**

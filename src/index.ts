@@ -3,6 +3,7 @@ import ConfigService from "./services/ConfigService";
 import DockerService from "./services/DockerService";
 import HomeassistantService from "./services/HomeassistantService";
 import DatabaseService from "./services/DatabaseService";
+import MigrationService from "./services/MigrationService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
 const _ = require('lodash');
@@ -113,6 +114,11 @@ client.on('connect', async function () {
 
   // Publish availability as online
   await HomeassistantService.publishAvailability(client, true);
+
+  // One-off cleanup of legacy (image-based) discovery topics before publishing
+  // the current container-based ones, so upgrading instances don't keep
+  // orphaned Home Assistant entities.
+  MigrationService.runStartupMigrations(client);
 
   if (config?.ignore?.containers == "*") {
     logger.warn('Skipping setup of container checking cause all containers is ignored `ignore.containers="*"`.')
