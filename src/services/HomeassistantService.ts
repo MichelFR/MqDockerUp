@@ -348,8 +348,7 @@ export default class HomeassistantService {
     valueName: string,
     deviceName: string,
     deviceClass?: string | null,
-    icon: string = "mdi:docker",
-    prefix: string = ""
+    icon: string = "mdi:docker"
   ): object {
     const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
     const defaultEntityId = `sensor.${TopicService.slugify(deviceName)}_${formatedName}`;
@@ -386,8 +385,7 @@ export default class HomeassistantService {
     tag: string,
     valueName: string,
     deviceName: string,
-    containerId: any,
-    prefix: string = ""
+    containerId: any
   ): object {
     const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
     const defaultEntityId = `update.${TopicService.slugify(deviceName)}_${formatedName}`;

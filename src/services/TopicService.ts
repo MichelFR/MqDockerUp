@@ -21,8 +21,8 @@ export default class TopicService {
    */
   public static getDeviceName(container: any): string {
     const prefix = config?.main?.prefix || "";
-    const containerName = container.Name.substring(1);
-    return prefix ? `${prefix}_${containerName}` : containerName;
+    const containerName = container?.Name ? container.Name.substring(1) : "";
+    return prefix && containerName ? `${prefix}_${containerName}` : containerName;
   }
 
   /**
@@ -30,7 +30,7 @@ export default class TopicService {
    * @param deviceName The device name from {@link getDeviceName}.
    */
   public static getStateTopic(deviceName: string): string {
-    return `${config.mqtt.topic}/${deviceName}`;
+    return `${config?.mqtt?.topic || "mqdockerup"}/${deviceName}`;
   }
 
   /**
