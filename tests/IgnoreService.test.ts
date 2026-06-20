@@ -147,3 +147,42 @@ describe('IgnoreService.ignoreUpdates whitelist (MONITOR_UPDATES)', () => {
     expect(service.ignoreUpdates(labelled)).toBe(false);
   });
 });
+
+describe('IgnoreService with a partially defined config', () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  // Loads IgnoreService with a mocked ConfigService so we can inject a config
+  // whose `ignore` section is missing keys (as a shallow-merged partial
+  // config.yaml produces), without touching the real config file.
+  function loadIgnoreServiceWithConfig(configValue: any): typeof IgnoreService {
+    let service: typeof IgnoreService = IgnoreService;
+    jest.isolateModules(() => {
+      jest.doMock("../src/services/ConfigService", () => ({
+        __esModule: true,
+        default: { getConfig: () => configValue },
+      }));
+      service = require("../src/services/IgnoreService").default;
+    });
+    return service;
+  }
+
+  it('does not crash when ignore.updates is undefined', () => {
+    const service = loadIgnoreServiceWithConfig({ ignore: { containers: "" } });
+    expect(() => service.ignoreUpdates(makeInspectInfo('nginx:latest', '/nginx'))).not.toThrow();
+    expect(service.ignoreUpdates(makeInspectInfo('nginx:latest', '/nginx'))).toBe(false);
+  });
+
+  it('does not crash when ignore.containers is undefined', () => {
+    const service = loadIgnoreServiceWithConfig({ ignore: { updates: "" } });
+    expect(() => service.ignoreContainer(makeContainerInfo(['/nginx']))).not.toThrow();
+    expect(service.ignoreContainer(makeContainerInfo(['/nginx']))).toBe(false);
+  });
+
+  it('does not crash when getConfig returns undefined', () => {
+    const service = loadIgnoreServiceWithConfig(undefined);
+    expect(() => service.ignoreContainer(makeContainerInfo(['/nginx']))).not.toThrow();
+    expect(() => service.ignoreUpdates(makeInspectInfo('nginx:latest', '/nginx'))).not.toThrow();
+  });
+});

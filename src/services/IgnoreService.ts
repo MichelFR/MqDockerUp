@@ -26,7 +26,7 @@ export default class IgnoreService {
     // Explicit ignore by label or env list always wins.
     const ignoreContainerByLabel: boolean = ("Labels" in container) && ("mqdockerup.ignore_container" in container.Labels) && container.Labels["mqdockerup.ignore_container"] === "true";
 
-    const containersCommaList = config?.ignore?.containers;
+    const containersCommaList = config?.ignore?.containers ?? "";
     const ignoreContainerByEnv: boolean = container.Names.some(name => containersCommaList.includes(name.replace("/", "")));
 
     if (ignoreContainerByLabel || ignoreContainerByEnv) {
@@ -73,7 +73,7 @@ export default class IgnoreService {
     // Explicit ignore by label or env list always wins.
     const ignoreUpdatesByLabel: boolean = ("Labels" in container.Config) && ("mqdockerup.ignore_updates" in container.Config.Labels) && container.Config.Labels["mqdockerup.ignore_updates"] === "true";
 
-    const containersCommaList = config?.ignore?.updates;
+    const containersCommaList = config?.ignore?.updates ?? "";
     const ignoreUpdatesByEnv = containersCommaList.includes(container.Name.replace("/", ""));
 
     if (ignoreUpdatesByLabel || ignoreUpdatesByEnv) {
