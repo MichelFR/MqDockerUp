@@ -39,7 +39,7 @@
     "source-map-support": "^0.5.21",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "overrides": {
     "js-yaml": "^4.2.0"
