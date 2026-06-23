@@ -19,7 +19,7 @@
     "update"
   ],
   "dependencies": {
-    "axios": "^1.18.0",
+    "axios": "^1.18.1",
     "better-sqlite3": "^12.11.1",
     "dockerode": "^5.0.0",
     "figlet": "^1.11.0",
