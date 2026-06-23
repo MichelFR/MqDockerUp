@@ -45,7 +45,7 @@ export default class DatabaseService {
      * @param topic The subscription topic
      * @param containerId The corresponding container id
      */
-    public static async addTopic(topic: string, containerId: string) {
+    public static addTopic(topic: string, containerId: string) {
         this.db
             .prepare("INSERT OR IGNORE INTO topics(topic, containerId) VALUES(?, ?)")
             .run(topic, containerId);
@@ -119,18 +119,11 @@ export default class DatabaseService {
         }
     }
 
-    public static getTopicsForContainer(containerId: string): Promise<{ topic: string }[]> {
-        return new Promise((resolve, reject) => {
-            try {
-                const rows = this.db.prepare('SELECT topic FROM topics WHERE containerId = ?').all(containerId) as { topic: string }[];
-                resolve(rows);
-            } catch (err) {
-                reject(err);
-            }
-        });
+    public static getTopicsForContainer(containerId: string): { topic: string }[] {
+        return this.db.prepare('SELECT topic FROM topics WHERE containerId = ?').all(containerId) as { topic: string }[];
     }
 
-    public static async deleteTopic(topic: string, containerId: string) {
+    public static deleteTopic(topic: string, containerId: string) {
         this.db.prepare('DELETE FROM topics WHERE topic = ? AND containerId = ?').run(topic, containerId);
     }
 

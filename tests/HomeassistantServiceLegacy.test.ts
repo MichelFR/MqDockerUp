@@ -15,6 +15,31 @@ jest.mock("../src/services/DockerService", () => ({
     getImageInfo: jest.fn(),
     getImageNewDigest: jest.fn(),
     getSourceRepo: jest.fn(),
+    splitImageReference: jest.fn((reference: string | null | undefined) => {
+      if (!reference) {
+        return { image: "unknown", tag: "latest" };
+      }
+
+      const digestIndex = reference.indexOf("@");
+      const imageReference = digestIndex === -1 ? reference : reference.substring(0, digestIndex);
+      const digest = digestIndex === -1 ? undefined : reference.substring(digestIndex + 1);
+      const lastSlashIndex = imageReference.lastIndexOf("/");
+      const lastColonIndex = imageReference.lastIndexOf(":");
+
+      if (lastColonIndex > lastSlashIndex) {
+        return {
+          image: imageReference.substring(0, lastColonIndex),
+          tag: imageReference.substring(lastColonIndex + 1) || "latest",
+          ...(digest ? { digest } : {}),
+        };
+      }
+
+      return {
+        image: imageReference,
+        tag: "latest",
+        ...(digest ? { digest } : {}),
+      };
+    }),
   },
 }));
 

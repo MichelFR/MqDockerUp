@@ -15,6 +15,33 @@ jest.mock("../src/services/DockerService", () => ({
     getImageInfo: jest.fn(),
     getImageNewDigest: jest.fn(),
     getSourceRepo: jest.fn(),
+    getImageRegistryName: jest.fn().mockResolvedValue("ghcr.io"),
+    getCreatedBy: jest.fn().mockReturnValue("Docker"),
+    splitImageReference: jest.fn((reference: string | null | undefined) => {
+      if (!reference) {
+        return { image: "unknown", tag: "latest" };
+      }
+
+      const digestIndex = reference.indexOf("@");
+      const imageReference = digestIndex === -1 ? reference : reference.substring(0, digestIndex);
+      const digest = digestIndex === -1 ? undefined : reference.substring(digestIndex + 1);
+      const lastSlashIndex = imageReference.lastIndexOf("/");
+      const lastColonIndex = imageReference.lastIndexOf(":");
+
+      if (lastColonIndex > lastSlashIndex) {
+        return {
+          image: imageReference.substring(0, lastColonIndex),
+          tag: imageReference.substring(lastColonIndex + 1) || "latest",
+          ...(digest ? { digest } : {}),
+        };
+      }
+
+      return {
+        image: imageReference,
+        tag: "latest",
+        ...(digest ? { digest } : {}),
+      };
+    }),
   },
 }));
 
@@ -23,9 +50,9 @@ jest.mock("../src/services/DatabaseService", () => ({
   default: {
     containerExists: jest.fn().mockResolvedValue(false),
     addContainer: jest.fn().mockResolvedValue(undefined),
-    addTopic: jest.fn().mockResolvedValue(undefined),
-    getTopicsForContainer: jest.fn().mockResolvedValue([]),
-    deleteTopic: jest.fn().mockResolvedValue(undefined),
+    addTopic: jest.fn(),
+    getTopicsForContainer: jest.fn().mockReturnValue([]),
+    deleteTopic: jest.fn(),
   },
 }));
 
@@ -44,6 +71,7 @@ import HomeassistantService from "../src/services/HomeassistantService";
 describe("HomeassistantService discovery", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (DatabaseService.getTopicsForContainer as jest.Mock).mockReturnValue([]);
   });
 
   test("uses container names for Home Assistant identity when containers share an image", async () => {
@@ -303,7 +331,7 @@ describe("HomeassistantService discovery", () => {
 
     (DockerService.listContainers as jest.Mock).mockResolvedValue(containers);
     (DatabaseService.containerExists as jest.Mock).mockResolvedValue(true);
-    (DatabaseService.getTopicsForContainer as jest.Mock).mockResolvedValue([
+    (DatabaseService.getTopicsForContainer as jest.Mock).mockReturnValue([
       { topic: "homeassistant/sensor/server_esphome/docker_id/config" },
       { topic: "homeassistant/sensor/server_ghcr_io_esphome_esphome_latest/docker_id/config" },
     ]);
@@ -333,7 +361,7 @@ describe("HomeassistantService discovery", () => {
 
     (DockerService.listContainers as jest.Mock).mockResolvedValue(containers);
     (DatabaseService.containerExists as jest.Mock).mockResolvedValue(true);
-    (DatabaseService.getTopicsForContainer as jest.Mock).mockResolvedValue([
+    (DatabaseService.getTopicsForContainer as jest.Mock).mockReturnValue([
       { topic: "homeassistant/button/server_esphome/docker_manual_update/config" },
       { topic: "homeassistant/update/server_esphome/docker_update/config" },
     ]);
@@ -342,5 +370,32 @@ describe("HomeassistantService discovery", () => {
     await HomeassistantService.publishConfigMessages(client);
 
     expect(DatabaseService.deleteTopic).not.toHaveBeenCalled();
+  });
+
+  test("publishes container state safely when HostConfig is missing", async () => {
+    const container = {
+      Id: "container-one",
+      Name: "/minimal-container",
+      Config: { Image: "ghcr.io/example/app:latest" },
+      State: {
+        Status: "running",
+        StartedAt: "2026-06-23T10:00:00Z",
+      },
+      RestartCount: 0,
+      Created: "2026-06-23T09:00:00Z",
+    } as unknown as ContainerInspectInfo;
+
+    const client = { publish: jest.fn() };
+    await HomeassistantService.publishContainerMessage(container, client);
+
+    const [, payload] = client.publish.mock.calls[0];
+    expect(JSON.parse(payload)).toEqual(
+      expect.objectContaining({
+        dockerRestartPolicy: "unknown",
+        dockerPorts: "",
+        dockerRegistry: "ghcr.io",
+        dockerCreatedBy: "Docker",
+      })
+    );
   });
 });

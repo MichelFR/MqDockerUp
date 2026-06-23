@@ -30,13 +30,14 @@ export default class DockerService {
   public static updatingContainers: string[] = [];
   public static SourceUrlCache = new Map<string, string>();
 
-  public static splitImageReference(reference: string | null | undefined): { image: string; tag: string } {
+  public static splitImageReference(reference: string | null | undefined): { image: string; tag: string; digest?: string } {
     if (!reference) {
       return { image: "unknown", tag: "latest" };
     }
 
     const digestIndex = reference.indexOf("@");
     const imageReference = digestIndex === -1 ? reference : reference.substring(0, digestIndex);
+    const digest = digestIndex === -1 ? undefined : reference.substring(digestIndex + 1);
     const lastSlashIndex = imageReference.lastIndexOf("/");
     const lastColonIndex = imageReference.lastIndexOf(":");
 
@@ -44,12 +45,14 @@ export default class DockerService {
       return {
         image: imageReference.substring(0, lastColonIndex),
         tag: imageReference.substring(lastColonIndex + 1) || "latest",
+        ...(digest ? { digest } : {}),
       };
     }
 
     return {
       image: imageReference,
       tag: "latest",
+      ...(digest ? { digest } : {}),
     };
   }
 

@@ -44,6 +44,7 @@ describe("DockerService.splitImageReference", () => {
     expect(DockerService.splitImageReference("ghcr.io/example/app@sha256:abcdef123456")).toEqual({
       image: "ghcr.io/example/app",
       tag: "latest",
+      digest: "sha256:abcdef123456",
     });
   });
 

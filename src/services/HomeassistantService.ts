@@ -81,36 +81,10 @@ export default class HomeassistantService {
     return container.Name.startsWith("/") ? container.Name.substring(1) : container.Name;
   }
 
-  private static splitImageReference(reference: string | null | undefined): { image: string; tag: string; digest?: string } {
-    if (!reference) {
-      return { image: "unknown", tag: "latest" };
-    }
-
-    const digestIndex = reference.indexOf("@");
-    const imageReference = digestIndex === -1 ? reference : reference.substring(0, digestIndex);
-    const digest = digestIndex === -1 ? undefined : reference.substring(digestIndex + 1);
-    const lastSlashIndex = imageReference.lastIndexOf("/");
-    const lastColonIndex = imageReference.lastIndexOf(":");
-
-    if (lastColonIndex > lastSlashIndex) {
-      return {
-        image: imageReference.substring(0, lastColonIndex),
-        tag: imageReference.substring(lastColonIndex + 1) || "latest",
-        ...(digest ? { digest } : {}),
-      };
-    }
-
-    return {
-      image: imageReference,
-      tag: "latest",
-      ...(digest ? { digest } : {}),
-    };
-  }
-
   private static getContainerIdentity(container: ContainerInspectInfo): ContainerIdentity {
     const prefix = config?.main.prefix || "";
     const imageReference = container.Config?.Image || "unknown";
-    const {image, tag, digest} = this.splitImageReference(imageReference);
+    const {image, tag, digest} = DockerService.splitImageReference(imageReference);
     const containerName = this.getContainerName(container);
     const formattedContainerName = this.formatSafeName(containerName);
     const topicName = prefix ? `${prefix}_${formattedContainerName}` : formattedContainerName;
@@ -140,15 +114,15 @@ export default class HomeassistantService {
     return `${config?.mqtt?.discoveryPrefix}/${component}/${topicName}/${key}/config`;
   }
 
-  private static async publishDiscoveryMessage(client: any, topic: string, payload: object, containerId: string): Promise<string> {
+  private static publishDiscoveryMessage(client: any, topic: string, payload: object, containerId: string): string {
     this.publishMessage(client, topic, payload, {retain: true});
-    await DatabaseService.addTopic(topic, containerId);
+    DatabaseService.addTopic(topic, containerId);
     return topic;
   }
 
-  private static async removeStaleDiscoveryTopics(client: any, containerId: string, currentTopics: string[]) {
+  private static removeStaleDiscoveryTopics(client: any, containerId: string, currentTopics: string[]) {
     const currentTopicSet = new Set(currentTopics);
-    const storedTopics = await DatabaseService.getTopicsForContainer(containerId);
+    const storedTopics = DatabaseService.getTopicsForContainer(containerId);
 
     for (const {topic} of storedTopics) {
       if (currentTopicSet.has(topic)) {
@@ -156,7 +130,7 @@ export default class HomeassistantService {
       }
 
       this.publishMessage(client, topic, "", {retain: true});
-      await DatabaseService.deleteTopic(topic, containerId);
+      DatabaseService.deleteTopic(topic, containerId);
     }
   }
 
@@ -223,7 +197,7 @@ export default class HomeassistantService {
           discovery.deviceClass,
           discovery.icon
         );
-        currentTopics.push(await this.publishDiscoveryMessage(client, topic, payload, container.Id));
+        currentTopics.push(this.publishDiscoveryMessage(client, topic, payload, container.Id));
       }
 
       for (const button of buttonDiscoveries) {
@@ -238,7 +212,7 @@ export default class HomeassistantService {
           button.payloadPress ?? button.command,
           button.key
         );
-        currentTopics.push(await this.publishDiscoveryMessage(client, topic, payload, container.Id));
+        currentTopics.push(this.publishDiscoveryMessage(client, topic, payload, container.Id));
       }
 
       if (!IgnoreService.ignoreUpdates(container)) {
@@ -253,14 +227,14 @@ export default class HomeassistantService {
           "update",
           "manual_update"
         );
-        currentTopics.push(await this.publishDiscoveryMessage(client, manualUpdateTopic, manualUpdatePayload, container.Id));
+        currentTopics.push(this.publishDiscoveryMessage(client, manualUpdateTopic, manualUpdatePayload, container.Id));
 
         const updateTopic = this.getDiscoveryTopic("update", identity.topicName, "docker_update");
         const updatePayload = this.createUpdatePayload("Update", identity.image, identity.imageReference, "dockerUpdate", identity.topicName, container.Id);
-        currentTopics.push(await this.publishDiscoveryMessage(client, updateTopic, updatePayload, container.Id));
+        currentTopics.push(this.publishDiscoveryMessage(client, updateTopic, updatePayload, container.Id));
       }
 
-      await this.removeStaleDiscoveryTopics(client, container.Id, currentTopics);
+      this.removeStaleDiscoveryTopics(client, container.Id, currentTopics);
     }
   }
 
@@ -564,7 +538,7 @@ export default class HomeassistantService {
     const identity = this.getContainerIdentity(container);
 
     let dockerPorts = "";
-    if (container.HostConfig.PortBindings) {
+    if (container.HostConfig?.PortBindings) {
       for (const [containerPort, hostPorts] of Object.entries(container.HostConfig.PortBindings)) {
         if (hostPorts && Array.isArray(hostPorts) && hostPorts.length > 0) {
           const hostPort = (hostPorts[0] as { HostPort: string }).HostPort;
@@ -588,7 +562,7 @@ export default class HomeassistantService {
       dockerStatus: container.State.Status,
       dockerHealth: container.State.Health?.Status || "unknown",
       dockerRestartCount: container.RestartCount,
-      dockerRestartPolicy: container.HostConfig.RestartPolicy?.Name || "unknown",
+      dockerRestartPolicy: container.HostConfig?.RestartPolicy?.Name || "unknown",
       dockerPorts: dockerPorts,
       dockerUptime: dockerUptime,
       dockerCreated: container.Created,
