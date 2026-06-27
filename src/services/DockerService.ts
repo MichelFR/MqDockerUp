@@ -29,7 +29,7 @@ export default class DockerService {
   public static events = new EventEmitter();
   public static updatingContainers: string[] = [];
   public static SourceUrlCache = new Map<string, string>();
-  public static LatestReleaseCache = new Map<string, string | null>();
+  public static LatestReleaseCache = new Map<string, string>();
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
@@ -223,7 +223,7 @@ export default class DockerService {
    */
   public static async getLatestGithubReleaseTag(sourceRepo: string): Promise<string | null> {
     const cached = DockerService.LatestReleaseCache.get(sourceRepo);
-    if (cached !== undefined) {
+    if (cached) {
       return cached;
     }
 
@@ -231,24 +231,27 @@ export default class DockerService {
     try {
       const normalized = /^https?:\/\//i.test(sourceRepo) ? sourceRepo : `https://${sourceRepo}`;
       const parsedUrl = new URL(normalized);
+
       if (parsedUrl.hostname !== "github.com") {
-        DockerService.LatestReleaseCache.set(sourceRepo, null);
         return null;
       }
       ownerRepo = parsedUrl.pathname.replace(/^\//, "").replace(/\.git$/, "").replace(/\/$/, "");
     } catch (error) {
-      DockerService.LatestReleaseCache.set(sourceRepo, null);
       return null;
     }
 
     try {
       const response = await axios.get(`https://api.github.com/repos/${ownerRepo}/releases/latest`);
       const tagName = response.data?.tag_name ?? null;
-      DockerService.LatestReleaseCache.set(sourceRepo, tagName);
+
+      // Cache Tag
+      if (tagName != null) {
+        DockerService.LatestReleaseCache.set(sourceRepo, tagName);
+      }
+
       return tagName;
     } catch (error) {
       logger.warn(`Could not fetch latest GitHub release for ${ownerRepo}`);
-      DockerService.LatestReleaseCache.set(sourceRepo, null);
       return null;
     }
   }
