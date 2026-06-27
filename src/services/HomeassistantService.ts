@@ -536,6 +536,18 @@ export default class HomeassistantService {
       const deviceName = TopicService.getDeviceName(container);
       const updateTopic = TopicService.getUpdateTopic(deviceName);
       const sourceRepo = await DockerService.getSourceRepo(image, tag);
+      const versionLabel = imageInfo?.Config?.Labels?.["org.opencontainers.image.version"];
+      const installedVersion = versionLabel || `${tag}: ${currentDigest?.substring(0, 12)}`;
+
+      let latestVersion = installedVersion;
+      if (newDigest) {
+        if (versionLabel && sourceRepo) {
+          const latestReleaseTag = await DockerService.getLatestGithubReleaseTag(sourceRepo);
+          latestVersion = latestReleaseTag || `${tag}: ${newDigest.substring(0, 12)}`;
+        } else {
+          latestVersion = `${tag}: ${newDigest.substring(0, 12)}`;
+        }
+      }
 
       if (sourceRepo) {
         logger.info(`Found source repository: ${sourceRepo}`);
@@ -546,8 +558,8 @@ export default class HomeassistantService {
       let updatePayload: any;
       if (haLegacy) {
         updatePayload = {
-          installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
-          latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
+          installed_version: installedVersion,
+          latest_version: newDigest ? latestVersion : null,
           release_notes: null,
           release_url: null,
           entity_picture: null,
@@ -555,8 +567,8 @@ export default class HomeassistantService {
           progress: 0,
           update: {
             state: currentDigest && newDigest && currentDigest !== newDigest ? "available" : "idle",
-            installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
-            latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
+            installed_version: installedVersion,
+            latest_version: newDigest ? latestVersion : null,
             last_check: new Date().toISOString(),
             progress: 0,
             remaining: 0,
@@ -574,8 +586,8 @@ export default class HomeassistantService {
         }
       } else {
         updatePayload = {
-          installed_version: `${tag}: ${currentDigest?.substring(0, 12)}`,
-          latest_version: newDigest ? `${tag}: ${newDigest?.substring(0, 12)}` : null,
+          installed_version: installedVersion,
+          latest_version: newDigest ? latestVersion : null,
           release_summary: "",
           release_url: `${sourceRepo ? sourceRepo : "https://github.com/MichelFR/MqDockerUp"}/releases`,
           entity_picture: "https://raw.githubusercontent.com/MichelFR/MqDockerUp/refs/heads/main/assets/logo_200x200.png",
