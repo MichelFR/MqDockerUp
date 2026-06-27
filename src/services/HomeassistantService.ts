@@ -449,6 +449,7 @@ export default class HomeassistantService {
     const deviceName = TopicService.getDeviceName(container);
     const updateTopic = TopicService.getUpdateTopic(deviceName);
     const sourceRepo = await DockerService.getSourceRepo(image, tag);
+    const versionLabel = imageInfo?.Config?.Labels?.["org.opencontainers.image.version"];
 
     if (sourceRepo) {
       logger.debug(`Found source repository: ${sourceRepo}`);
@@ -456,8 +457,11 @@ export default class HomeassistantService {
       logger.debug(`Could not find source repository for ${image}`);
     }
 
-    const installedVersion = `${tag}: ${currentDigest.substring(0, 12)}`;
-    const latestVersion = `${tag}: ${newDigest.substring(0, 12)}`;
+    const installedVersion = versionLabel || `${tag}: ${currentDigest.substring(0, 12)}`;
+    let latestVersion = `${tag}: ${newDigest.substring(0, 12)}`;
+    if (versionLabel && sourceRepo) {
+      latestVersion = await DockerService.getLatestGithubReleaseTag(sourceRepo) || latestVersion;
+    }
 
     const updatePayload = {
       installed_version: installedVersion,
