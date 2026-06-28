@@ -1,3 +1,18 @@
+const mockGet = jest.fn();
+
+jest.mock("axios", () => ({
+  create: jest.fn(() => ({ get: mockGet, defaults: { headers: {} } })),
+}));
+
+jest.mock("../src/services/ConfigService", () => ({
+  __esModule: true,
+  default: {
+    getConfig: () => ({
+      accessTokens: { github: "test-token" },
+    }),
+  },
+}));
+
 import { GithubAdapter } from "../src/registry-factory/GithubAdapter";
 
 describe('GithubAdapter', () => {
@@ -36,6 +51,50 @@ describe('GithubAdapter', () => {
       const url = adapter['getImageUrl']();
 
       expect(url).toEqual('https://ghcr.io/v2/user/image/manifests/latest');
+    });
+
+    it('should preserve multi-level repository paths', () => {
+      const adapter = new GithubAdapter('ghcr.io/org/team/project/image', 'latest');
+      const url = adapter['getImageUrl']();
+
+      expect(url).toEqual('https://ghcr.io/v2/org/team/project/image/manifests/latest');
+    });
+  });
+
+  describe('getVersionLabel', () => {
+    function mockRegistryFlow(version: string | null) {
+      mockGet.mockImplementation((url: string) => {
+        if (url === 'https://ghcr.io/v2/user/image/manifests/latest') {
+          return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
+        }
+        if (url === 'https://ghcr.io/v2/user/image/blobs/sha256:configdigest') {
+          const labels = version ? { "org.opencontainers.image.version": version } : {};
+          return Promise.resolve({ data: { config: { Labels: labels } } });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+    }
+
+    beforeEach(() => {
+      mockGet.mockReset();
+    });
+
+    it('resolves newVersion from the config blob', async () => {
+      mockRegistryFlow('2.15.3');
+
+      const adapter = new GithubAdapter('ghcr.io/user/image', 'latest');
+      const result = await adapter.getVersionLabel();
+
+      expect(result).toBe('2.15.3');
+    });
+
+    it('returns null when the config blob has no version label', async () => {
+      mockRegistryFlow(null);
+
+      const adapter = new GithubAdapter('ghcr.io/user/image', 'latest');
+      const result = await adapter.getVersionLabel();
+
+      expect(result).toBeNull();
     });
   });
 });
