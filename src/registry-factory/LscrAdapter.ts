@@ -71,18 +71,7 @@ export class LscrAdapter extends ImageRegistryAdapter {
                 headers: { ...headers, Accept: 'application/json' },
             });
 
-            // Single-arch images return the manifest (with a "config" descriptor) directly;
-            // multi-arch images return an index, so resolve one platform's manifest first.
             let configDigest = indexResponse.data?.config?.digest;
-            if (!configDigest) {
-                const platformDigest = indexResponse.data?.manifests?.[0]?.digest;
-                if (!platformDigest) return null;
-
-                const manifestResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${platformDigest}`, {
-                    headers: { ...headers, Accept: 'application/json' },
-                });
-                configDigest = manifestResponse.data?.config?.digest;
-            }
             if (!configDigest) return null;
 
             const configResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/blobs/${configDigest}`, { headers });
