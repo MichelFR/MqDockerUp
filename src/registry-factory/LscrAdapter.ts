@@ -63,22 +63,21 @@ export class LscrAdapter extends ImageRegistryAdapter {
     async getVersionLabel(): Promise<string | null> {
         try {
             const repoPath = this.image.replace('lscr.io/', '');
-            const tokenResponse = await this.http.get(
+            const tokenResponse = await axios.get(
                 `https://auth.docker.io/token?service=registry.docker.io&scope=repository:${repoPath}:pull`
             );
             const headers = { Authorization: `Bearer ${tokenResponse.data.token}` };
 
-            const indexResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
+            const indexResponse = await axios.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
                 headers: { ...headers, Accept: 'application/json' },
             });
 
             let configDigest = indexResponse.data?.config?.digest;
             if (!configDigest) return null;
 
-            const configResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/blobs/${configDigest}`, { headers });
+            const configResponse = await axios.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/blobs/${configDigest}`, { headers });
             return configResponse.data?.config?.Labels?.["org.opencontainers.image.version"] ?? null;
         } catch (error) {
             return null;
         }
     }
-}
