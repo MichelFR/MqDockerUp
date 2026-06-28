@@ -69,7 +69,7 @@ export class LscrAdapter extends ImageRegistryAdapter {
             const headers = { Authorization: `Bearer ${tokenResponse.data.token}` };
 
             const indexResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
-                headers: { ...headers, Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' },
+                headers: { ...headers, Accept: 'application/json' },
             });
 
             // Single-arch images return the manifest (with a "config" descriptor) directly;
@@ -80,7 +80,7 @@ export class LscrAdapter extends ImageRegistryAdapter {
                 if (!platformDigest) return null;
 
                 const manifestResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${platformDigest}`, {
-                    headers: { ...headers, Accept: 'application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' },
+                    headers: { ...headers, Accept: 'application/json' },
                 });
                 configDigest = manifestResponse.data?.config?.digest;
             }

@@ -19,13 +19,13 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
         try {
             const url = new URL(`https://${image}`);
             const host = url.hostname;
-    
+
             // check if the host is exactly 'docker.io'
             const isDockerIo = host === 'docker.io';
-    
+
             const parts = image.split("/");
             const isDefaultDocker = parts.length === 1 || (parts.length === 2 && !parts[0].includes("."));
-    
+
             return isDockerIo || isDefaultDocker;
         } catch (error) {
             // if the image string is not a valid URL, it's not a Docker image
@@ -50,7 +50,7 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
 
         return `${DockerhubAdapter.DOCKER_API_URL}/${repoPath}/tags/${this.tag}`;
     }
-    
+
     async checkForNewDigest(): Promise<{ newDigest: string; }> {
         try {
             let response = await this.http.get(this.getImageUrl());
@@ -91,7 +91,7 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
             const headers = { Authorization: `Bearer ${tokenResponse.data.token}` };
 
             const indexResponse = await this.http.get(`${DockerhubAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
-                headers: { ...headers, Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' },
+                headers: { ...headers, Accept: 'application/json' },
             });
 
             let configDigest = indexResponse.data?.config?.digest;

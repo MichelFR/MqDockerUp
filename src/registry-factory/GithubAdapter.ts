@@ -27,7 +27,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
         try {
             const url = new URL(`https://${image}`);
             const host = url.hostname;
-    
+
             // check if the host is exactly 'ghcr.io'
             return host === 'ghcr.io';
         } catch (error) {
@@ -80,7 +80,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
     async getVersionLabel(): Promise<string | null> {
         try {
             const indexResponse = await this.http.get(this.getImageUrl(), {
-                headers: { Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' },
+                headers: { Accept: 'application/json' },
             });
 
             let configDigest = indexResponse.data?.config?.digest;
