@@ -83,18 +83,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
                 headers: { Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' },
             });
 
-            // Single-arch images return the manifest (with a "config" descriptor) directly;
-            // multi-arch images return an index, so resolve one platform's manifest first.
             let configDigest = indexResponse.data?.config?.digest;
-            if (!configDigest) {
-                const platformDigest = indexResponse.data?.manifests?.[0]?.digest;
-                if (!platformDigest) return null;
-
-                const manifestResponse = await this.http.get(this.getManifestUrl(platformDigest), {
-                    headers: { Accept: 'application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' },
-                });
-                configDigest = manifestResponse.data?.config?.digest;
-            }
             if (!configDigest) return null;
 
             const configResponse = await this.http.get(this.getBlobUrl(configDigest));
