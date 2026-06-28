@@ -129,9 +129,7 @@ export default class DockerService {
   }
 
   /**
-   * Gets the version label of the latest available image for the specified
-   * image name. Only worth calling once an update is known to be available,
-   * since resolving it costs extra registry requests.
+   * Gets the version label of the latest available image for the specified image name.
    * @param imageName - The name of the Docker image.
    * @param tag - The tag of the Docker image.
    */
@@ -246,7 +244,7 @@ export default class DockerService {
       logger.info(`Updating individual container: ${containerId}`);
 
       const container = DockerService.docker.getContainer(containerId);
-      
+
       let info = null
       try {
         info = await container.inspect();
@@ -326,10 +324,10 @@ export default class DockerService {
               try {
                 await container.stop();
                 await container.remove();
-                
+
                 // Remove the old container ID from updatingContainers immediately after removal
                 this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
-                
+
                 const newContainer = await DockerService.docker.createContainer(containerConfig);
                 await newContainer.start();
 
@@ -364,7 +362,7 @@ export default class DockerService {
                 const newImage = newContainerInfo.Config.Image.split(":")[0];
                 const newTag = newContainerInfo.Config.Image.split(":")[1] || "latest";
                 const newName = newContainerInfo.Name.startsWith("/") ? newContainerInfo.Name.substring(1) : newContainerInfo.Name;
-                
+
                 // Get topics for old container and publish empty messages to remove from HA
                 await new Promise<void>((resolve) => {
                   DatabaseService.getTopics(containerId, (err: any, topics: any) => {
@@ -373,20 +371,20 @@ export default class DockerService {
                       resolve();
                       return;
                     }
-                    
+
                     // Publish empty messages to all old topics
                     topics.forEach((topic: any) => {
                       HomeassistantService.publishMessage(mqttClient, topic.topic, "", { retain: true, qos: 0 });
                     });
-                    
+
                     resolve();
                   });
                 });
-                
+
                 // Now remove old container from database and add new one
                 await DatabaseService.deleteContainer(containerId);
                 await DatabaseService.addContainer(newContainerInfo.Id, newName, newImage, newTag);
-                
+
                 // Republish update message to show as up-to-date
                 await HomeassistantService.publishImageUpdateMessage(newContainerInfo, mqttClient);
 
