@@ -140,9 +140,7 @@ export default class DockerService {
   }
 
   /**
-   * Gets the version label of the latest available image for the specified
-   * image name. Only worth calling once an update is known to be available,
-   * since resolving it costs extra registry requests.
+   * Gets the version label of the latest available image for the specified image name.
    * @param imageName - The name of the Docker image.
    * @param tag - The tag of the Docker image.
    */
@@ -316,7 +314,7 @@ export default class DockerService {
       logger.info(`Updating individual container: ${containerId}`);
 
       const container = DockerService.docker.getContainer(containerId);
-      
+
       let info = null
       try {
         info = await container.inspect();
