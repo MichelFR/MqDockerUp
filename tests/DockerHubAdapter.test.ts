@@ -2,6 +2,7 @@ const mockGet = jest.fn();
 
 jest.mock("axios", () => ({
   create: jest.fn(() => ({ get: mockGet })),
+  get: mockGet,
 }));
 
 import { DockerhubAdapter } from "../src/registry-factory/DockerhubAdapter";
