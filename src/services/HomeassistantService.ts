@@ -442,6 +442,13 @@ export default class HomeassistantService {
       }
     }
 
+    if (!container || !container.Config) {
+      logger.warn("Container or container configuration is missing");
+      return;
+    }
+
+    logger.info(`Inspecting container ${container.Name || "unknown"}`);
+
     const identity = this.getContainerIdentity(container);
     const imageInfo = await DockerService.getImageInfo(identity.imageReference);
     const repoDigests = imageInfo?.RepoDigests || [];
@@ -573,5 +580,4 @@ export default class HomeassistantService {
     this.publishMessage(client, topic, payload, {retain: true});
     logger.info(`Published container message for ${identity.containerName}`);
   }
-
 }
