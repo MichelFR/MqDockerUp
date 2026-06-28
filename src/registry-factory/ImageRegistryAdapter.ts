@@ -28,16 +28,11 @@ export abstract class ImageRegistryAdapter {
 
     abstract checkForNewDigest(): Promise<{ newDigest: string; }>;
 
-    /**
-     * Resolves the org.opencontainers.image.version label of the tracked tag,
-     * without pulling the image. Only worth calling once an update is known
-     * to be available (see checkForNewDigest), since it costs extra requests.
-     */
     abstract getVersionLabel(): Promise<string | null>;
 
     protected removeSHA256Prefix(input: string): string {
         const prefix = "sha256:";
-        
+
         if (input.startsWith(prefix)) {
           return input.slice(prefix.length);
         } else {

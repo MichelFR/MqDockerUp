@@ -58,7 +58,6 @@ export class LscrAdapter extends ImageRegistryAdapter {
     /**
      * Resolves the org.opencontainers.image.version label of the tracked tag
      * by fetching its manifest and config blob from Docker Hub's registry API
-     * (no image pull needed).
      */
     async getVersionLabel(): Promise<string | null> {
         try {
