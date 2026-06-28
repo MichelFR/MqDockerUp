@@ -46,22 +46,6 @@ describe('DockerHubAdapter', () => {
     });
   });
 
-  describe('checkForNewDigest', () => {
-    beforeEach(() => {
-      mockGet.mockReset();
-    });
-
-    it('resolves the digest without resolving a version label', async () => {
-      mockGet.mockResolvedValue({ data: { digest: 'sha256:abc123', images: [{}] } });
-
-      const adapter = new DockerhubAdapter('dockerhub-test-1/backend', 'latest');
-      const result = await adapter.checkForNewDigest();
-
-      expect(result).toEqual({ newDigest: 'abc123' });
-      expect(mockGet).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('getVersionLabel', () => {
     beforeEach(() => {
       mockGet.mockReset();

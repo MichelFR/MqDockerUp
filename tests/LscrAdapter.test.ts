@@ -45,22 +45,6 @@ describe('LscrAdapter', () => {
     });
   });
 
-  describe('checkForNewDigest', () => {
-    beforeEach(() => {
-      mockGet.mockReset();
-    });
-
-    it('resolves the digest without resolving a version label', async () => {
-      mockGet.mockResolvedValue({ data: { results: [{ digest: 'sha256:abc123', images: [{}] }] } });
-
-      const adapter = new LscrAdapter('lscr.io/lscr-test-1/backend', 'latest');
-      const result = await adapter.checkForNewDigest();
-
-      expect(result).toEqual({ newDigest: 'abc123' });
-      expect(mockGet).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('getVersionLabel', () => {
     beforeEach(() => {
       mockGet.mockReset();

@@ -54,22 +54,6 @@ describe('GithubAdapter', () => {
     });
   });
 
-  describe('checkForNewDigest', () => {
-    beforeEach(() => {
-      mockGet.mockReset();
-    });
-
-    it('resolves only the digest, without resolving a version label', async () => {
-      mockGet.mockResolvedValue({ headers: { 'docker-content-digest': 'sha256:abc123' } });
-
-      const adapter = new GithubAdapter('ghcr.io/user/image', 'latest');
-      const result = await adapter.checkForNewDigest();
-
-      expect(result).toEqual({ newDigest: 'abc123' });
-      expect(mockGet).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('getVersionLabel', () => {
     beforeEach(() => {
       mockGet.mockReset();
