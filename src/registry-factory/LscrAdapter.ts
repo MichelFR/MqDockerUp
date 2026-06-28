@@ -81,3 +81,4 @@ export class LscrAdapter extends ImageRegistryAdapter {
             return null;
         }
     }
+}
