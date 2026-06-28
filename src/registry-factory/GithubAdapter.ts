@@ -75,7 +75,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
 
     /**
      * Resolves the org.opencontainers.image.version label of the tracked tag
-     * by fetching its manifest and config blob (no image pull needed).
+     * by fetching its manifest and config blob
      */
     async getVersionLabel(): Promise<string | null> {
         try {
