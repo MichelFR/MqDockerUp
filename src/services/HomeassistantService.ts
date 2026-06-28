@@ -458,9 +458,10 @@ export default class HomeassistantService {
     }
 
     const installedVersion = versionLabel || `${tag}: ${currentDigest.substring(0, 12)}`;
-    let latestVersion = `${tag}: ${newDigest.substring(0, 12)}`;
-    if (versionLabel && sourceRepo) {
-      latestVersion = await DockerService.getLatestGithubReleaseTag(sourceRepo) || latestVersion;
+    let latestVersion = installedVersion;
+    if (currentDigest !== newDigest) {
+      const newVersion = await DockerService.getImageVersionLabel(image, tag);
+      latestVersion = newVersion || `${tag}: ${newDigest.substring(0, 12)}`;
     }
 
     const updatePayload = {

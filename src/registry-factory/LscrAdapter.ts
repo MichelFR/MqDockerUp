@@ -3,6 +3,7 @@ import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
 
 export class LscrAdapter extends ImageRegistryAdapter {
     private static readonly DOCKER_API_URL = 'https://hub.docker.com/v2/repositories';
+    private static readonly REGISTRY_API_URL = 'https://registry-1.docker.io/v2';
     private tag: string;
 
     constructor(image: string, tag: string = 'latest', accessToken?: string) {
@@ -51,6 +52,44 @@ export class LscrAdapter extends ImageRegistryAdapter {
         } catch (error) {
             logger.error(`Failed to check for new lscr.io image digest: ${error}`);
             throw error;
+        }
+    }
+
+    /**
+     * Resolves the org.opencontainers.image.version label of the tracked tag
+     * by fetching its manifest and config blob from Docker Hub's registry API
+     * (no image pull needed).
+     */
+    async getVersionLabel(): Promise<string | null> {
+        try {
+            const repoPath = this.image.replace('lscr.io/', '');
+            const tokenResponse = await this.http.get(
+                `https://auth.docker.io/token?service=registry.docker.io&scope=repository:${repoPath}:pull`
+            );
+            const headers = { Authorization: `Bearer ${tokenResponse.data.token}` };
+
+            const indexResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
+                headers: { ...headers, Accept: 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' },
+            });
+
+            // Single-arch images return the manifest (with a "config" descriptor) directly;
+            // multi-arch images return an index, so resolve one platform's manifest first.
+            let configDigest = indexResponse.data?.config?.digest;
+            if (!configDigest) {
+                const platformDigest = indexResponse.data?.manifests?.[0]?.digest;
+                if (!platformDigest) return null;
+
+                const manifestResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${platformDigest}`, {
+                    headers: { ...headers, Accept: 'application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' },
+                });
+                configDigest = manifestResponse.data?.config?.digest;
+            }
+            if (!configDigest) return null;
+
+            const configResponse = await this.http.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/blobs/${configDigest}`, { headers });
+            return configResponse.data?.config?.Labels?.["org.opencontainers.image.version"] ?? null;
+        } catch (error) {
+            return null;
         }
     }
 }

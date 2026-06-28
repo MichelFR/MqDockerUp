@@ -6,48 +6,50 @@ jest.mock("../src/index", () => ({
   },
 }));
 
-jest.mock("axios", () => ({
-  get: jest.fn(),
-}));
+jest.mock("../src/registry-factory/ImageRegistryAdapterFactory");
 
-import axios from "axios";
+import { ImageRegistryAdapterFactory } from "../src/registry-factory/ImageRegistryAdapterFactory";
 import DockerService from "../src/services/DockerService";
 
-describe("DockerService.getLatestGithubReleaseTag", () => {
-  beforeEach(() => {
-    DockerService.LatestReleaseCache.clear();
-    jest.clearAllMocks();
+describe("DockerService.getImageNewDigest", () => {
+  it("returns the digest reported by the registry adapter", async () => {
+    (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
+      checkForNewDigest: jest.fn().mockResolvedValue({ newDigest: "abc123" }),
+    });
+
+    const result = await DockerService.getImageNewDigest("penpot/backend", "latest");
+
+    expect(result).toBe("abc123");
   });
 
-  it("returns the latest release tag for a GitHub repository", async () => {
-    (axios.get as jest.Mock).mockResolvedValue({ data: { tag_name: "2.15.3" } });
+  it("returns null when the adapter throws", async () => {
+    (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
+      checkForNewDigest: jest.fn().mockRejectedValue(new Error("network error")),
+    });
 
-    const result = await DockerService.getLatestGithubReleaseTag("https://github.com/penpot/penpot");
-
-    expect(result).toBe("2.15.3");
-    expect(axios.get).toHaveBeenCalledWith("https://api.github.com/repos/penpot/penpot/releases/latest");
-  });
-
-  it("caches the result so subsequent calls do not hit the network again", async () => {
-    (axios.get as jest.Mock).mockResolvedValue({ data: { tag_name: "2.15.3" } });
-
-    await DockerService.getLatestGithubReleaseTag("https://github.com/penpot/penpot");
-    await DockerService.getLatestGithubReleaseTag("https://github.com/penpot/penpot");
-
-    expect(axios.get).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns null for non-GitHub repositories", async () => {
-    const result = await DockerService.getLatestGithubReleaseTag("https://gitlab.com/group/project");
+    const result = await DockerService.getImageNewDigest("penpot/backend", "latest");
 
     expect(result).toBeNull();
-    expect(axios.get).not.toHaveBeenCalled();
+  });
+});
+
+describe("DockerService.getImageVersionLabel", () => {
+  it("returns the version label reported by the registry adapter", async () => {
+    (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
+      getVersionLabel: jest.fn().mockResolvedValue("2.15.3"),
+    });
+
+    const result = await DockerService.getImageVersionLabel("penpot/backend", "latest");
+
+    expect(result).toBe("2.15.3");
   });
 
-  it("returns null when the GitHub API request fails", async () => {
-    (axios.get as jest.Mock).mockRejectedValue(new Error("not found"));
+  it("returns null when the adapter throws", async () => {
+    (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
+      getVersionLabel: jest.fn().mockRejectedValue(new Error("network error")),
+    });
 
-    const result = await DockerService.getLatestGithubReleaseTag("https://github.com/owner/repo");
+    const result = await DockerService.getImageVersionLabel("penpot/backend", "latest");
 
     expect(result).toBeNull();
   });
