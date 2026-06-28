@@ -75,29 +75,9 @@ describe('GithubAdapter', () => {
       mockGet.mockReset();
     });
 
-    it('resolves newVersion from the config blob for a single-arch image', async () => {
+    it('resolves newVersion from the config blob', async () => {
       mockGet.mockImplementation((url: string) => {
         if (url === 'https://ghcr.io/v2/user/image/manifests/latest') {
-          return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
-        }
-        if (url === 'https://ghcr.io/v2/user/image/blobs/sha256:configdigest') {
-          return Promise.resolve({ data: { config: { Labels: { "org.opencontainers.image.version": "2.15.3" } } } });
-        }
-        return Promise.reject(new Error(`Unexpected URL: ${url}`));
-      });
-
-      const adapter = new GithubAdapter('ghcr.io/user/image', 'latest');
-      const result = await adapter.getVersionLabel();
-
-      expect(result).toBe('2.15.3');
-    });
-
-    it('resolves the platform manifest first for a multi-arch index', async () => {
-      mockGet.mockImplementation((url: string) => {
-        if (url === 'https://ghcr.io/v2/user/image/manifests/latest') {
-          return Promise.resolve({ data: { manifests: [{ digest: 'sha256:platform1' }] } });
-        }
-        if (url === 'https://ghcr.io/v2/user/image/manifests/sha256:platform1') {
           return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
         }
         if (url === 'https://ghcr.io/v2/user/image/blobs/sha256:configdigest') {

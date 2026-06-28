@@ -42,12 +42,6 @@ export class GithubAdapter extends ImageRegistryAdapter {
         return `https://${registry}/v2/${user}/${image}/manifests/${this.tag}`;
     }
 
-    private getManifestUrl(reference: string): string {
-        const imageNameWithTag = this.image.split(':')[0];
-        const [registry, user, image] = imageNameWithTag.split('/');
-        return `https://${registry}/v2/${user}/${image}/manifests/${reference}`;
-    }
-
     private getBlobUrl(digest: string): string {
         const imageNameWithTag = this.image.split(':')[0];
         const [registry, user, image] = imageNameWithTag.split('/');
