@@ -104,3 +104,4 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
             return null;
         }
     }
+}
