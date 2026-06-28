@@ -47,48 +47,44 @@ describe('DockerHubAdapter', () => {
   });
 
   describe('getVersionLabel', () => {
+    const repoPath = 'dockerhub-test/backend';
+
+    function mockRegistryFlow(version: string | null) {
+      mockGet.mockImplementation((url: string) => {
+        if (url === `https://auth.docker.io/token?service=registry.docker.io&scope=repository:${repoPath}:pull`) {
+          return Promise.resolve({ data: { token: 'test-token' } });
+        }
+        if (url === `https://registry-1.docker.io/v2/${repoPath}/manifests/latest`) {
+          return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
+        }
+        if (url === `https://registry-1.docker.io/v2/${repoPath}/blobs/sha256:configdigest`) {
+          const labels = version ? { "org.opencontainers.image.version": version } : {};
+          return Promise.resolve({ data: { config: { Labels: labels } } });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+    }
+
     beforeEach(() => {
       mockGet.mockReset();
     });
 
     it('resolves newVersion from the registry config blob', async () => {
-      mockGet.mockImplementation((url: string) => {
-        if (url.startsWith('https://auth.docker.io/token')) {
-          return Promise.resolve({ data: { token: 'test-token' } });
-        }
-        if (url === 'https://registry-1.docker.io/v2/dockerhub-test-1/backend/manifests/latest') {
-          return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
-        }
-        if (url === 'https://registry-1.docker.io/v2/dockerhub-test-1/backend/blobs/sha256:configdigest') {
-          return Promise.resolve({ data: { config: { Labels: { "org.opencontainers.image.version": "2.15.3" } } } });
-        }
-        return Promise.reject(new Error(`Unexpected URL: ${url}`));
-      });
+      mockRegistryFlow('2.15.3');
 
-      const adapter = new DockerhubAdapter('dockerhub-test-1/backend', 'latest');
+      const adapter = new DockerhubAdapter(repoPath, 'latest');
       const result = await adapter.getVersionLabel();
 
       expect(result).toBe('2.15.3');
       expect(mockGet).toHaveBeenCalledWith(
-        'https://auth.docker.io/token?service=registry.docker.io&scope=repository:dockerhub-test-1/backend:pull'
+        `https://auth.docker.io/token?service=registry.docker.io&scope=repository:${repoPath}:pull`
       );
     });
 
     it('returns null when the config blob has no version label', async () => {
-      mockGet.mockImplementation((url: string) => {
-        if (url.startsWith('https://auth.docker.io/token')) {
-          return Promise.resolve({ data: { token: 'test-token' } });
-        }
-        if (url === 'https://registry-1.docker.io/v2/dockerhub-test-3/backend/manifests/latest') {
-          return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
-        }
-        if (url === 'https://registry-1.docker.io/v2/dockerhub-test-3/backend/blobs/sha256:configdigest') {
-          return Promise.resolve({ data: { config: { Labels: {} } } });
-        }
-        return Promise.reject(new Error(`Unexpected URL: ${url}`));
-      });
+      mockRegistryFlow(null);
 
-      const adapter = new DockerhubAdapter('dockerhub-test-3/backend', 'latest');
+      const adapter = new DockerhubAdapter(repoPath, 'latest');
       const result = await adapter.getVersionLabel();
 
       expect(result).toBeNull();

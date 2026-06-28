@@ -55,20 +55,25 @@ describe('GithubAdapter', () => {
   });
 
   describe('getVersionLabel', () => {
-    beforeEach(() => {
-      mockGet.mockReset();
-    });
-
-    it('resolves newVersion from the config blob', async () => {
+    function mockRegistryFlow(version: string | null) {
       mockGet.mockImplementation((url: string) => {
         if (url === 'https://ghcr.io/v2/user/image/manifests/latest') {
           return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
         }
         if (url === 'https://ghcr.io/v2/user/image/blobs/sha256:configdigest') {
-          return Promise.resolve({ data: { config: { Labels: { "org.opencontainers.image.version": "2.15.3" } } } });
+          const labels = version ? { "org.opencontainers.image.version": version } : {};
+          return Promise.resolve({ data: { config: { Labels: labels } } });
         }
         return Promise.reject(new Error(`Unexpected URL: ${url}`));
       });
+    }
+
+    beforeEach(() => {
+      mockGet.mockReset();
+    });
+
+    it('resolves newVersion from the config blob', async () => {
+      mockRegistryFlow('2.15.3');
 
       const adapter = new GithubAdapter('ghcr.io/user/image', 'latest');
       const result = await adapter.getVersionLabel();
@@ -77,15 +82,7 @@ describe('GithubAdapter', () => {
     });
 
     it('returns null when the config blob has no version label', async () => {
-      mockGet.mockImplementation((url: string) => {
-        if (url === 'https://ghcr.io/v2/user/image/manifests/latest') {
-          return Promise.resolve({ data: { config: { digest: 'sha256:configdigest' } } });
-        }
-        if (url === 'https://ghcr.io/v2/user/image/blobs/sha256:configdigest') {
-          return Promise.resolve({ data: { config: { Labels: {} } } });
-        }
-        return Promise.reject(new Error(`Unexpected URL: ${url}`));
-      });
+      mockRegistryFlow(null);
 
       const adapter = new GithubAdapter('ghcr.io/user/image', 'latest');
       const result = await adapter.getVersionLabel();
