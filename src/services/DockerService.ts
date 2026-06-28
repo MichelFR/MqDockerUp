@@ -29,7 +29,6 @@ export default class DockerService {
   public static events = new EventEmitter();
   public static updatingContainers: string[] = [];
   public static SourceUrlCache = new Map<string, string>();
-  public static LatestReleaseCache = new Map<string, string>();
 
   // Start listening to Docker events
   public static listenToDockerEvents() {
@@ -122,7 +121,24 @@ export default class DockerService {
       let response = await adapter.checkForNewDigest();
 
       return response.newDigest;
-      
+    } catch (error: any) {
+      logger.error(imageName, tag);
+      logger.error(error);
+      return null;
+    }
+  }
+
+  /**
+   * Gets the version label of the latest available image for the specified
+   * image name. Only worth calling once an update is known to be available,
+   * since resolving it costs extra registry requests.
+   * @param imageName - The name of the Docker image.
+   * @param tag - The tag of the Docker image.
+   */
+  public static async getImageVersionLabel(imageName: string, tag: string): Promise<string | null> {
+    try {
+      let adapter = ImageRegistryAdapterFactory.getAdapter(imageName, tag);
+      return await adapter.getVersionLabel();
     } catch (error: any) {
       logger.error(imageName, tag);
       logger.error(error);
@@ -213,47 +229,6 @@ export default class DockerService {
     }
 
     return null;
-  }
-
-  /**
-   * Gets the latest release tag from a GitHub source repository.
-   * Used to show the actual upstream version instead of a digest.
-   * @param sourceRepo - The source repository URL (e.g. "https://github.com/owner/repo").
-   * @returns A promise that resolves to the latest release tag name, or `null` if it could not be determined.
-   */
-  public static async getLatestGithubReleaseTag(sourceRepo: string): Promise<string | null> {
-    const cached = DockerService.LatestReleaseCache.get(sourceRepo);
-    if (cached) {
-      return cached;
-    }
-
-    let ownerRepo: string | null = null;
-    try {
-      const normalized = /^https?:\/\//i.test(sourceRepo) ? sourceRepo : `https://${sourceRepo}`;
-      const parsedUrl = new URL(normalized);
-
-      if (parsedUrl.hostname !== "github.com") {
-        return null;
-      }
-      ownerRepo = parsedUrl.pathname.replace(/^\//, "").replace(/\.git$/, "").replace(/\/$/, "");
-    } catch (error) {
-      return null;
-    }
-
-    try {
-      const response = await axios.get(`https://api.github.com/repos/${ownerRepo}/releases/latest`);
-      const tagName = response.data?.tag_name ?? null;
-
-      // Cache Tag
-      if (tagName != null) {
-        DockerService.LatestReleaseCache.set(sourceRepo, tagName);
-      }
-
-      return tagName;
-    } catch (error) {
-      logger.warn(`Could not fetch latest GitHub release for ${ownerRepo}`);
-      return null;
-    }
   }
 
   /**
