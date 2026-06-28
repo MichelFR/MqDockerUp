@@ -1,5 +1,6 @@
 import logger from "../services/LoggerService";
 import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
+import axios from "axios";
 
 export class LscrAdapter extends ImageRegistryAdapter {
     private static readonly DOCKER_API_URL = 'https://hub.docker.com/v2/repositories';
