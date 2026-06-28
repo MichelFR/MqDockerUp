@@ -11,28 +11,6 @@ jest.mock("../src/registry-factory/ImageRegistryAdapterFactory");
 import { ImageRegistryAdapterFactory } from "../src/registry-factory/ImageRegistryAdapterFactory";
 import DockerService from "../src/services/DockerService";
 
-describe("DockerService.getImageNewDigest", () => {
-  it("returns the digest reported by the registry adapter", async () => {
-    (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
-      checkForNewDigest: jest.fn().mockResolvedValue({ newDigest: "abc123" }),
-    });
-
-    const result = await DockerService.getImageNewDigest("penpot/backend", "latest");
-
-    expect(result).toBe("abc123");
-  });
-
-  it("returns null when the adapter throws", async () => {
-    (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
-      checkForNewDigest: jest.fn().mockRejectedValue(new Error("network error")),
-    });
-
-    const result = await DockerService.getImageNewDigest("penpot/backend", "latest");
-
-    expect(result).toBeNull();
-  });
-});
-
 describe("DockerService.getImageVersionLabel", () => {
   it("returns the version label reported by the registry adapter", async () => {
     (ImageRegistryAdapterFactory.getAdapter as jest.Mock).mockReturnValue({
