@@ -77,7 +77,7 @@ describe("HomeassistantService legacy update payload", () => {
     expect(parsedPayload).toEqual(expect.objectContaining({
       installed_version: "latest: 123456789abc",
       latest_version: "latest: abcdef123456",
-      title: "ghcr.io/esphome/esphome:latest",
+      title: "esphome",
       progress: 40,
       update: expect.objectContaining({
         state: "installing",

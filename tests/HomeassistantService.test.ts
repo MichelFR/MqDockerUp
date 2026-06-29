@@ -107,6 +107,7 @@ describe("HomeassistantService discovery", () => {
             state_topic: "mqdockerup/server_esphome",
             device: expect.objectContaining({
               identifiers: ["server_esphome"],
+              name: "esphome",
             }),
           }),
         }),
@@ -117,6 +118,7 @@ describe("HomeassistantService discovery", () => {
             state_topic: "mqdockerup/server_esphomefelishas",
             device: expect.objectContaining({
               identifiers: ["server_esphomefelishas"],
+              name: "esphomefelishas",
             }),
           }),
         }),
@@ -129,6 +131,7 @@ describe("HomeassistantService discovery", () => {
             unique_id: "server_esphome_manual_restart",
             device: expect.objectContaining({
               identifiers: ["server_esphome"],
+              name: "esphome",
             }),
           }),
         }),
@@ -141,6 +144,7 @@ describe("HomeassistantService discovery", () => {
             unique_id: "server_esphomefelishas_manual_restart",
             device: expect.objectContaining({
               identifiers: ["server_esphomefelishas"],
+              name: "esphomefelishas",
             }),
           }),
         }),
@@ -151,6 +155,9 @@ describe("HomeassistantService discovery", () => {
             payload_available: "online",
             payload_not_available: "offline",
             payload_install: JSON.stringify({ containerId: "container-one", image: "ghcr.io/esphome/esphome", topicName: "server_esphome" }),
+            device: expect.objectContaining({
+              name: "esphome",
+            }),
           }),
         }),
         expect.objectContaining({
@@ -160,6 +167,9 @@ describe("HomeassistantService discovery", () => {
             payload_available: "online",
             payload_not_available: "offline",
             payload_install: JSON.stringify({ containerId: "container-two", image: "ghcr.io/esphome/esphome", topicName: "server_esphomefelishas" }),
+            device: expect.objectContaining({
+              name: "esphomefelishas",
+            }),
           }),
         }),
       ])
@@ -291,6 +301,11 @@ describe("HomeassistantService discovery", () => {
 
     expect(DockerService.getImageInfo).toHaveBeenCalledWith("ghcr.io/example/app@sha256:abcdef123456");
     expect(DockerService.getImageNewDigest).not.toHaveBeenCalled();
+    expect(client.publish).toHaveBeenCalledWith(
+      "mqdockerup/server_digest_app/update",
+      expect.stringContaining('"title":"digest-app"'),
+      { retain: true }
+    );
     expect(client.publish).toHaveBeenCalledWith(
       "mqdockerup/server_digest_app/update",
       expect.stringContaining('"installed_version":"latest: abcdef123456"'),

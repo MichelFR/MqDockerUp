@@ -27,6 +27,7 @@ type ContainerIdentity = {
   imageReference: string;
   digest?: string;
   containerName: string;
+  displayName: string;
   topicName: string;
 };
 
@@ -95,15 +96,16 @@ export default class HomeassistantService {
       imageReference,
       ...(digest ? { digest } : {}),
       containerName,
+      displayName: containerName,
       topicName,
     };
   }
 
-  private static createDevice(imageReference: string, topicName: string): DiscoveryDevice {
+  private static createDevice(imageReference: string, topicName: string, displayName: string): DiscoveryDevice {
     return {
       manufacturer: "MqDockerUp",
       model: imageReference,
-      name: topicName,
+      name: displayName,
       sw_version: packageJson.version,
       sa: suggestedArea,
       identifiers: [topicName],
@@ -138,6 +140,7 @@ export default class HomeassistantService {
     name: string,
     imageReference: string,
     topicName: string,
+    displayName: string,
     command: ContainerCommand,
     containerId: string,
     icon: string,
@@ -153,7 +156,7 @@ export default class HomeassistantService {
         topic: `${config.mqtt.topic}/availability`,
       },
       payload_press: payloadPress,
-      device: this.createDevice(imageReference, topicName),
+      device: this.createDevice(imageReference, topicName, displayName),
       icon,
     };
   }
@@ -194,6 +197,7 @@ export default class HomeassistantService {
           identity.imageReference,
           discovery.valueName,
           identity.topicName,
+          identity.displayName,
           discovery.deviceClass,
           discovery.icon
         );
@@ -206,6 +210,7 @@ export default class HomeassistantService {
           button.name,
           identity.imageReference,
           identity.topicName,
+          identity.displayName,
           button.command,
           container.Id,
           button.icon,
@@ -221,6 +226,7 @@ export default class HomeassistantService {
           "Manual Update",
           identity.imageReference,
           identity.topicName,
+          identity.displayName,
           "manualUpdate",
           container.Id,
           "mdi:arrow-up-bold-circle",
@@ -230,7 +236,7 @@ export default class HomeassistantService {
         currentTopics.push(this.publishDiscoveryMessage(client, manualUpdateTopic, manualUpdatePayload, container.Id));
 
         const updateTopic = this.getDiscoveryTopic("update", identity.topicName, "docker_update");
-        const updatePayload = this.createUpdatePayload("Update", identity.image, identity.imageReference, "dockerUpdate", identity.topicName, container.Id);
+        const updatePayload = this.createUpdatePayload("Update", identity.image, identity.imageReference, "dockerUpdate", identity.topicName, identity.displayName, container.Id);
         currentTopics.push(this.publishDiscoveryMessage(client, updateTopic, updatePayload, container.Id));
       }
 
@@ -289,6 +295,7 @@ export default class HomeassistantService {
     imageReference: string,
     valueName: string,
     topicName: string,
+    displayName: string,
     deviceClass?: string | null,
     icon: string = "mdi:docker"
   ): object {
@@ -310,7 +317,7 @@ export default class HomeassistantService {
       payload_available: "online",
       payload_not_available: "offline",
       device: {
-        ...this.createDevice(imageReference, topicName),
+        ...this.createDevice(imageReference, topicName, displayName),
       },
       icon: icon,
     };
@@ -322,6 +329,7 @@ export default class HomeassistantService {
     imageReference: string,
     valueName: string,
     topicName: string,
+    displayName: string,
     containerId: any
   ): object {
     const formatedName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
@@ -341,7 +349,7 @@ export default class HomeassistantService {
       payload_available: "online",
       payload_not_available: "offline",
       device: {
-        ...this.createDevice(imageReference, topicName),
+        ...this.createDevice(imageReference, topicName, displayName),
       },
       icon: "mdi:arrow-up-bold-circle",
       entity_picture: "https://github.com/MichelFR/MqDockerUp/raw/main/assets/logo_200x200.png",
@@ -504,7 +512,7 @@ export default class HomeassistantService {
           release_notes: null,
           release_url: null,
           entity_picture: null,
-          title: identity.imageReference,
+          title: identity.displayName,
           progress: 0,
           update: {
             state: currentDigest && newDigest && currentDigest !== newDigest ? "available" : "idle",
@@ -532,7 +540,7 @@ export default class HomeassistantService {
           release_summary: "",
           release_url: `${sourceRepo ? sourceRepo : "https://github.com/MichelFR/MqDockerUp"}/releases`,
           entity_picture: "https://raw.githubusercontent.com/MichelFR/MqDockerUp/refs/heads/main/assets/logo_200x200.png",
-          title: identity.imageReference,
+          title: identity.displayName,
           update_percentage: update_percentage,
           in_progress: update_percentage !== null && remaining !== null,
         };
