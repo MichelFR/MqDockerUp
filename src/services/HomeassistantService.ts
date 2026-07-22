@@ -2,7 +2,7 @@ import DockerService from "./DockerService";
 import ConfigService from "./ConfigService";
 import DatabaseService from "./DatabaseService";
 import logger from "./LoggerService"
-import {ContainerInspectInfo, ContainerInfo} from "dockerode";
+import {ContainerInspectInfo, ContainerInfo, ImageInspectInfo} from "dockerode";
 import IgnoreService from "./IgnoreService";
 import TopicService from "./TopicService";
 
@@ -317,7 +317,13 @@ export default class HomeassistantService {
       // await this.publishImageUpdateMessage(container, client);
 
       if (!IgnoreService.ignoreUpdates(container)) {
-        await this.publishImageUpdateMessage(container, client);
+        try {
+          await this.publishImageUpdateMessage(container, client);
+        } catch (error: any) {
+          logger.warn(
+            `Skipping update check for container ${container.Name?.substring(1) || container.Id}: ${error.message || error}`
+          );
+        }
       }
     }
   }
@@ -510,7 +516,19 @@ export default class HomeassistantService {
 
     const image = container.Config.Image.split(":")[0];
     const tag = container.Config.Image.split(":")[1] || "latest";
-    const imageInfo = await DockerService.getImageInfo(image + ":" + tag);
+
+    let imageInfo: ImageInspectInfo | null = null;
+    try {
+      imageInfo = await DockerService.getImageInfo(image + ":" + tag);
+    } catch (error: any) {
+      // Image no longer exists locally (e.g. pruned while the container is
+      // stopped) — skip this container instead of crashing the whole app.
+      logger.warn(
+        `Could not inspect image ${image}:${tag} for container ${container.Name?.substring(1) || container.Id}: ${error.message || error}`
+      );
+      return;
+    }
+
     const repoDigests = imageInfo?.RepoDigests || [];
     let currentDigest: string | null = null, newDigest: string | null = null;
 
