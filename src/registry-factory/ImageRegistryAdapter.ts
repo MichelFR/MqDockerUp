@@ -28,9 +28,11 @@ export abstract class ImageRegistryAdapter {
 
     abstract checkForNewDigest(): Promise<{ newDigest: string; }>;
 
+    abstract getVersionLabel(): Promise<string | null>;
+
     protected removeSHA256Prefix(input: string): string {
         const prefix = "sha256:";
-        
+
         if (input.startsWith(prefix)) {
           return input.slice(prefix.length);
         } else {
