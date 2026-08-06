@@ -33,7 +33,7 @@
     "@types/dockerode": "^4.0.1",
     "@types/figlet": "^1.7.0",
     "@types/jest": "^30.0.0",
-    "@types/lodash": "^4.17.24",
+    "@types/lodash": "^4.17.25",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
     "source-map-support": "^0.5.21",
