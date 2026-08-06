@@ -11,7 +11,7 @@ jest.mock("../src/services/DatabaseService", () => ({
   default: mockDb,
 }));
 
-import MigrationService from "../src/services/MigrationService";
+const MigrationService = require("../src/services/MigrationService").default;
 
 const FLAG = "legacyContainerTopicCleanup";
 
