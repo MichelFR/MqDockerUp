@@ -514,6 +514,10 @@ export default class HomeassistantService {
       }
     }
 
+    logger.info(
+      `Inspecting container ${container.Name}`
+    );
+    
     const image = container.Config.Image.split(":")[0];
     const tag = container.Config.Image.split(":")[1] || "latest";
 
