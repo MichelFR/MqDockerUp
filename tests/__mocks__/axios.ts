@@ -1,7 +1,12 @@
 export const create = jest.fn(() => {
     return {
       get: jest.fn((url: string) => {
-        if (url.includes('https://hub.docker.com/v2/repositories')) {
+        const parsedUrl = new URL(url);
+        if (
+          parsedUrl.protocol === 'https:' &&
+          parsedUrl.hostname === 'hub.docker.com' &&
+          parsedUrl.pathname.startsWith('/v2/repositories')
+        ) {
           // Return a mock response for the Docker API URL
           return Promise.resolve({
             data: {
@@ -41,4 +46,3 @@ export const create = jest.fn(() => {
   export default {
     create,
   };
-  

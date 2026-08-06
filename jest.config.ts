@@ -1,6 +1,8 @@
 export default {
-  preset: 'ts-jest',
   testEnvironment: 'node',
+  transform: {
+    '^.+\\.tsx?$': ['@swc/jest']
+  },
   testPathIgnorePatterns: [
     "/node_modules/",
     "/dist/"

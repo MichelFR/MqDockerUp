@@ -6,8 +6,12 @@ jest.mock("../src/index", () => ({
   },
 }));
 
-import DockerService from "../src/services/DockerService";
 import { ContainerInspectInfo } from "dockerode";
+import fs from "fs";
+
+fs.mkdirSync("./data", { recursive: true });
+
+const DockerService = require("../src/services/DockerService").default;
 
 describe('DockerService.getCreatedBy', () => {
   test('returns "Composer" when compose labels exist', () => {
