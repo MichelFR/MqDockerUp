@@ -26,7 +26,7 @@
     "lodash": "^4.18.1",
     "mqtt": "^5.16.0",
     "winston": "^3.19.0",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
