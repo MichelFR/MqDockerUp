@@ -22,7 +22,7 @@
     "axios": "^1.20.0",
     "better-sqlite3": "^13.0.3",
     "dockerode": "^5.0.1",
-    "figlet": "^1.11.4",
+    "figlet": "^1.12.0",
     "lodash": "^4.18.1",
     "mqtt": "^5.16.0",
     "winston": "^3.19.0",
