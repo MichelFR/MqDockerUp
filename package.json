@@ -22,22 +22,22 @@
     "axios": "^1.20.0",
     "better-sqlite3": "^13.0.3",
     "dockerode": "^5.0.1",
-    "figlet": "^1.11.4",
+    "figlet": "^1.12.0",
     "lodash": "^4.18.1",
-    "mqtt": "^5.16.0",
+    "mqtt": "^5.16.1",
     "winston": "^3.19.0",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
-    "@types/dockerode": "^4.0.1",
+    "@types/dockerode": "^4.0.2",
     "@types/figlet": "^1.7.0",
     "@types/jest": "^30.0.0",
-    "@types/lodash": "^4.17.25",
+    "@types/lodash": "^4.17.27",
     "jest": "^30.5.2",
     "nodemon": "^3.1.14",
     "source-map-support": "^0.5.21",
-    "ts-jest": "^29.4.12",
+    "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   },
