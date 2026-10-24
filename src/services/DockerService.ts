@@ -140,6 +140,22 @@ export default class DockerService {
     }
   }
 
+  /**
+   * Gets the version label of the latest available image for the specified image name.
+   * @param imageName - The name of the Docker image.
+   * @param tag - The tag of the Docker image.
+   */
+  public static async getImageVersionLabel(imageName: string, tag: string): Promise<string | null> {
+    try {
+      let adapter = ImageRegistryAdapterFactory.getAdapter(imageName, tag);
+      return await adapter.getVersionLabel();
+    } catch (error: any) {
+      logger.error(imageName, tag);
+      logger.error(error);
+      return null;
+    }
+  }
+
 
   /**
    * Gets the private registry for the specified image name.
