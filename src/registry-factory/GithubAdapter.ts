@@ -27,7 +27,7 @@ export class GithubAdapter extends ImageRegistryAdapter {
         try {
             const url = new URL(`https://${image}`);
             const host = url.hostname;
-
+    
             // check if the host is exactly 'ghcr.io'
             return host === 'ghcr.io';
         } catch (error) {

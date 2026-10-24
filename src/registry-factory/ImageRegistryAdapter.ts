@@ -32,7 +32,7 @@ export abstract class ImageRegistryAdapter {
 
     protected removeSHA256Prefix(input: string): string {
         const prefix = "sha256:";
-
+        
         if (input.startsWith(prefix)) {
           return input.slice(prefix.length);
         } else {

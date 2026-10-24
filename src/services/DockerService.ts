@@ -132,6 +132,7 @@ export default class DockerService {
       let response = await adapter.checkForNewDigest();
 
       return response.newDigest;
+      
     } catch (error: any) {
       logger.error(imageName, tag);
       logger.error(error);
@@ -314,7 +315,7 @@ export default class DockerService {
       logger.info(`Updating individual container: ${containerId}`);
 
       const container = DockerService.docker.getContainer(containerId);
-
+      
       let info = null
       try {
         info = await container.inspect();
