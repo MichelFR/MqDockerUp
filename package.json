@@ -31,7 +31,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/dockerode": "^4.0.2",
-    "@types/figlet": "^1.7.0",
+    "@types/figlet": "^1.12.0",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.27",
     "jest": "^30.5.2",
