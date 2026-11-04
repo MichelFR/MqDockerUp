@@ -8,6 +8,7 @@ import HomeassistantService from "./HomeassistantService";
 import DatabaseService from "./DatabaseService";
 import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
+import PullProgressService from "./PullProgressService";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -295,11 +296,17 @@ export default class DockerService {
   }
 
   public static async updateContainer(containerId: string) {
+    if (this.updatingContainers.includes(containerId)) {
+      return;
+    }
+    this.updatingContainers.push(containerId);
+    let progressInfo: ContainerInspectInfo | null = null;
+    let replacementId: string | undefined;
     try {
       logger.info(`Updating individual container: ${containerId}`);
 
       const container = DockerService.docker.getContainer(containerId);
-      
+
       let info = null
       try {
         info = await container.inspect();
@@ -313,195 +320,208 @@ export default class DockerService {
       }
 
       if (info) {
+        progressInfo = info;
         const oldImageId = info.Image;
         const image = info.Config.Image;
         const imageName = image.split(":")[0];
 
         // Store layer progress here
-        const layerProgress: Record<string, { current: number; total: number }> = {};
+        await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, null, true);
+        const platform = await DockerService.docker.info().catch(() => null);
+        const layerSizes = platform ? await PullProgressService.getLayerSizes(image, platform.OSType, platform.Architecture) : null;
+        const layerProgress: Record<string, number> = {};
         let lastPublishTime = 0;
+        let reliableProgress = layerSizes !== null;
 
-        await DockerService.docker.pull(image, async (err: any, stream: any) => {
-          logger.info("Pulling image: " + image);
-          if (err) {
-            logger.error("Pulling Error: " + err);
-            return;
-          }
-
-          this.updatingContainers.push(containerId);
-
-          DockerService.docker.modem.followProgress(
-            stream,
-            async (err: any) => {
-              if (err) {
-                logger.error("Stream Error: " + err);
-                this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
-                return;
-              }
-
-              logger.info("Image pulled successfully");
-
-              const { endpointsConfig, primaryNetwork } = DockerService.buildNetworkEndpointsConfig(info, containerId);
-
-              const containerConfig: any = {
-                ...info,
-                ...info.Config,
-                ...info.HostConfig,
-                // info.Name includes a leading slash, which causes the name
-                // to be dropped when recreating the container. Strip it so the
-                // container keeps its original name after an update.
-                name: info.Name.startsWith("/") ? info.Name.substring(1) : info.Name,
-                Image: image,
-              };
-
-              if (primaryNetwork) {
-                containerConfig.NetworkingConfig = {
-                  EndpointsConfig: { [primaryNetwork]: endpointsConfig[primaryNetwork] },
-                };
-              }
-
-              // The container will start with a new ID
-              containerConfig.Id = "";
-
-              // Mounts need no special handling: info.HostConfig.Binds and
-              // info.HostConfig.Mounts are passed through verbatim, which
-              // preserves bind mounts, named volumes, tmpfs, and all their
-              // flags exactly as the container was created with.
-
-              logger.debug(`Container config prepared for update: ${JSON.stringify(containerConfig, null, 2)}`);
-
-
-              const wasRunning = info.State?.Running === true;
-              let newContainer: Docker.Container | undefined;
-              try {
-                // Stop the old container, tolerating one that is already
-                // stopped (Docker answers 304 in that case).
-                try {
-                  await container.stop();
-                } catch (err: any) {
-                  if (err.statusCode !== 304) {
-                    throw err;
-                  }
-                }
-
-                // Rename the old container out of the way instead of removing
-                // it, so a failed creation can be rolled back without losing
-                // the container.
-                const backupName = `${containerConfig.name}_mqdockerup_old`;
-                await container.rename({ name: backupName });
-
-                try {
-                  newContainer = await DockerService.docker.createContainer(containerConfig);
-
-                  // Reattach the remaining networks before starting so DNS
-                  // and service discovery work from the first moment.
-                  await DockerService.reconnectSecondaryNetworks(endpointsConfig, primaryNetwork, newContainer.id, containerConfig.name);
-
-                  await newContainer.start();
-                } catch (error) {
-                  logger.error(`Failed to recreate container ${containerConfig.name}, rolling back to the old container`);
-                  try {
-                    if (newContainer) {
-                      await newContainer.remove({ force: true });
-                    }
-                    await container.rename({ name: containerConfig.name });
-                    if (wasRunning) {
-                      await container.start();
-                    }
-                  } catch (rollbackError) {
-                    logger.error(`Rollback of container ${containerConfig.name} failed: ${rollbackError}`);
-                  }
-                  throw error;
-                }
-
-                // The new container is up — the old one can go now. Forget it
-                // in the database first: its discovery topics are keyed by
-                // container name and live on for the new container, so they
-                // must not be cleared when the destroy event arrives.
-                await DatabaseService.deleteContainer(containerId);
-                await container.remove();
-
-                // Remove the old container ID from updatingContainers immediately after removal
-                this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
-
-                // Get the new container info for MQTT updates
-                const newContainerInfo = await newContainer.inspect();
-
-                // Remove old image
-                try {
-                  DockerService.docker
-                    .getImage(oldImageId)
-                    .remove({ force: true }, (err, data) => {
-                      if (err) {
-                        // Ignore 409 conflict errors - image is still in use by another container
-                        if (err.statusCode === 409) {
-                          logger.debug("Old image still in use by other containers, skipping removal");
-                        } else {
-                          logger.error("Error removing old image: " + err);
-                        }
-                      } else {
-                        logger.info("Old image removed successfully");
-                      }
-                    });
-                } catch (e) {
-                  logger.error("Error removing old image: " + e);
-                }
-
-
-                // Publish final 100% progress with the NEW container info
-                await HomeassistantService.publishUpdateProgressMessage(newContainerInfo, mqttClient, 100, false);
-
-                // Publish the new container under the (unchanged) device name
-                // and report it as up-to-date.
-                await HomeassistantService.publishContainer(mqttClient, newContainerInfo);
-                await HomeassistantService.publishImageUpdateMessage(newContainerInfo, mqttClient);
-
-                return newContainer;
-              } catch (error) {
-                logger.error("Error starting container with new image");
-                logger.error(error);
-                this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId);
-                throw error;
-              }
-            },
-            (event) => {
-              logger.debug(`Status: ${event.status}`);
-
-              if (event.id) {
-                const layer = layerProgress[event.id] || { current: 0, total: 0 };
-
-                if (event.progressDetail && (event.progressDetail.current || event.progressDetail.total)) {
-                  layer.current = event.progressDetail.current || layer.current;
-                  layer.total = event.progressDetail.total || layer.total;
-                }
-
-                if (["Pull complete", "Download complete", "Already exists"].includes(event.status)) {
-                  layer.current = layer.total || layer.current;
-                }
-
-                layerProgress[event.id] = layer;
-
-                const totalCurrent = Object.values(layerProgress).reduce((acc, l) => acc + l.current, 0);
-                const totalSize = Object.values(layerProgress).reduce((acc, l) => acc + l.total, 0);
-
-                if (totalSize > 0) {
-                  const percentage = Math.min(100, Math.round((totalCurrent / totalSize) * 100));
-                  logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
-
-                  const now = Date.now();
-                  if (now - lastPublishTime >= 1000) {
-                    lastPublishTime = now;
-                    HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
-                  }
-                }
-              }
+        await new Promise<void>((resolve, reject) => {
+          DockerService.docker.pull(image, (err: any, stream: any) => {
+            logger.info("Pulling image: " + image);
+            if (err) {
+              logger.error("Pulling Error: " + err);
+              reject(err);
+              return;
             }
-          );
+
+            DockerService.docker.modem.followProgress(
+              stream,
+              (err: any) => {
+                if (err) {
+                  logger.error("Stream Error: " + err);
+                  reject(err);
+                  return;
+                }
+
+                (async () => {
+                  logger.info("Image pulled successfully");
+                  // The pull has completed. Keep its measured completion visible
+                  // until replacement finishes instead of returning HA to preparing.
+                  await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, reliableProgress ? 100 : null, true);
+
+                  const { endpointsConfig, primaryNetwork } = DockerService.buildNetworkEndpointsConfig(info, containerId);
+
+                  const containerConfig: any = {
+                    ...info,
+                    ...info.Config,
+                    ...info.HostConfig,
+                    // info.Name includes a leading slash, which causes the name
+                    // to be dropped when recreating the container. Strip it so the
+                    // container keeps its original name after an update.
+                    name: info.Name.startsWith("/") ? info.Name.substring(1) : info.Name,
+                    Image: image,
+                  };
+
+                  if (primaryNetwork) {
+                    containerConfig.NetworkingConfig = {
+                      EndpointsConfig: { [primaryNetwork]: endpointsConfig[primaryNetwork] },
+                    };
+                  }
+
+                  // The container will start with a new ID
+                  containerConfig.Id = "";
+
+                  // Mounts need no special handling: info.HostConfig.Binds and
+                  // info.HostConfig.Mounts are passed through verbatim, which
+                  // preserves bind mounts, named volumes, tmpfs, and all their
+                  // flags exactly as the container was created with.
+
+                  logger.debug(`Container config prepared for update: ${JSON.stringify(containerConfig, null, 2)}`);
+
+
+                  const wasRunning = info.State?.Running === true;
+                  let newContainer: Docker.Container | undefined;
+                  try {
+                    // Stop the old container, tolerating one that is already
+                    // stopped (Docker answers 304 in that case).
+                    try {
+                      await container.stop();
+                    } catch (err: any) {
+                      if (err.statusCode !== 304) {
+                        throw err;
+                      }
+                    }
+
+                    // Rename the old container out of the way instead of removing
+                    // it, so a failed creation can be rolled back without losing
+                    // the container.
+                    const backupName = `${containerConfig.name}_mqdockerup_old`;
+                    await container.rename({ name: backupName });
+
+                    try {
+                      newContainer = await DockerService.docker.createContainer(containerConfig);
+                      replacementId = newContainer.id;
+                      this.updatingContainers.push(replacementId);
+
+                      // Reattach the remaining networks before starting so DNS
+                      // and service discovery work from the first moment.
+                      await DockerService.reconnectSecondaryNetworks(endpointsConfig, primaryNetwork, newContainer.id, containerConfig.name);
+
+                      await newContainer.start();
+                    } catch (error) {
+                      logger.error(`Failed to recreate container ${containerConfig.name}, rolling back to the old container`);
+                      try {
+                        if (newContainer) {
+                          await newContainer.remove({ force: true });
+                        }
+                        await container.rename({ name: containerConfig.name });
+                        if (wasRunning) {
+                          await container.start();
+                        }
+                      } catch (rollbackError) {
+                        logger.error(`Rollback of container ${containerConfig.name} failed: ${rollbackError}`);
+                      }
+                      throw error;
+                    }
+
+                    // The new container is up — the old one can go now. Forget it
+                    // in the database first: its discovery topics are keyed by
+                    // container name and live on for the new container, so they
+                    // must not be cleared when the destroy event arrives.
+                    await DatabaseService.deleteContainer(containerId);
+                    await container.remove();
+
+                    // Get the new container info for MQTT updates
+                    const newContainerInfo = await newContainer.inspect();
+
+                    // Remove old image
+                    try {
+                      DockerService.docker
+                        .getImage(oldImageId)
+                        .remove({ force: true }, (err, data) => {
+                          if (err) {
+                            // Ignore 409 conflict errors - image is still in use by another container
+                            if (err.statusCode === 409) {
+                              logger.debug("Old image still in use by other containers, skipping removal");
+                            } else {
+                              logger.error("Error removing old image: " + err);
+                            }
+                          } else {
+                            logger.info("Old image removed successfully");
+                          }
+                        });
+                    } catch (e) {
+                      logger.error("Error removing old image: " + e);
+                    }
+
+
+                    // Publish final 100% progress with the NEW container info
+                    await HomeassistantService.publishUpdateProgressMessage(newContainerInfo, mqttClient, 100, false);
+
+                    // Publish the new container under the (unchanged) device name
+                    // and report it as up-to-date.
+                    await HomeassistantService.publishContainer(mqttClient, newContainerInfo);
+                    this.updatingContainers = this.updatingContainers.filter((id) => id !== replacementId);
+                    await HomeassistantService.publishImageUpdateMessage(newContainerInfo, mqttClient);
+
+                    resolve();
+                  } catch (error) {
+                    logger.error("Error starting container with new image");
+                    logger.error(error);
+                    throw error;
+                  }
+                })().catch(reject);
+              },
+              (event) => {
+                logger.debug(`Status: ${event.status}`);
+
+                if (reliableProgress && layerSizes && event.id && ["Downloading", "Download complete", "Already exists", "Pull complete"].includes(event.status)) {
+                  const total = layerSizes[event.id];
+                  // Only filesystem layers belong to the manifest's byte total.
+                  // Docker also downloads config and manifest blobs on this stream.
+                  if (total === undefined) return;
+                  const current = event.status === "Downloading" ? event.progressDetail?.current : total;
+                  if (event.status === "Downloading" && current === undefined) return;
+                  if (!Number.isFinite(current) || current < (layerProgress[event.id] || 0) || current > total) {
+                    reliableProgress = false;
+                    HomeassistantService.publishUpdateProgressMessage(info, mqttClient, null, true);
+                    return;
+                  }
+                  layerProgress[event.id] = current;
+                  const totalCurrent = Object.values(layerProgress).reduce((sum, value) => sum + value, 0);
+                  const totalSize = Object.values(layerSizes).reduce((sum, value) => sum + value, 0);
+                  if (totalSize > 0) {
+                    const percentage = Math.floor((totalCurrent / totalSize) * 100);
+                    logger.debug(`Total progress: ${totalCurrent}/${totalSize} (${percentage}%)`);
+
+                    const now = Date.now();
+                    if (now - lastPublishTime >= 1000) {
+                      lastPublishTime = now;
+                      HomeassistantService.publishUpdateProgressMessage(info, mqttClient, percentage, true);
+                    }
+                  }
+                }
+              }
+            );
+          });
         });
       }
     } catch (error: any) {
       logger.error("Error updating container");
       logger.error(error);
+      if (progressInfo) {
+        await HomeassistantService.publishAbortUpdateMessage(progressInfo, mqttClient);
+      }
+    } finally {
+      this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId && id !== replacementId);
     }
   }
 
