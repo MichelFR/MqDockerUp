@@ -42,6 +42,13 @@ export class GithubAdapter extends ImageRegistryAdapter {
         return `https://${registry}/v2/${user}/${image}/manifests/${this.tag}`;
     }
 
+    private getBlobUrl(digest: string): string {
+        const parts = this.image.split(':')[0].split('/');
+        const registry = parts[0];
+        const repoPath = parts.slice(1).join('/');
+        return `https://${registry}/v2/${repoPath}/blobs/${digest}`;
+    }
+
     async checkForNewDigest(): Promise<{ newDigest: string; }> {
         const accessTokenSet = !!config?.accessTokens?.github;
         if (accessTokenSet) {
@@ -59,5 +66,25 @@ export class GithubAdapter extends ImageRegistryAdapter {
         }
 
         return { newDigest: "" };
+    }
+
+    /**
+     * Resolves the org.opencontainers.image.version label of the tracked tag
+     * by fetching its manifest and config blob
+     */
+    async getVersionLabel(): Promise<string | null> {
+        try {
+            const indexResponse = await this.http.get(this.getImageUrl(), {
+                headers: { Accept: 'application/json' },
+            });
+
+            let configDigest = indexResponse.data?.config?.digest;
+            if (!configDigest) return null;
+
+            const configResponse = await this.http.get(this.getBlobUrl(configDigest));
+            return configResponse.data?.config?.Labels?.["org.opencontainers.image.version"] ?? null;
+        } catch (error) {
+            return null;
+        }
     }
 }

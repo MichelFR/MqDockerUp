@@ -1,8 +1,10 @@
 import logger from "../services/LoggerService";
 import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
+import axios from "axios";
 
 export class LscrAdapter extends ImageRegistryAdapter {
     private static readonly DOCKER_API_URL = 'https://hub.docker.com/v2/repositories';
+    private static readonly REGISTRY_API_URL = 'https://registry-1.docker.io/v2';
     private tag: string;
 
     constructor(image: string, tag: string = 'latest', accessToken?: string) {
@@ -51,6 +53,32 @@ export class LscrAdapter extends ImageRegistryAdapter {
         } catch (error) {
             logger.error(`Failed to check for new lscr.io image digest: ${error}`);
             throw error;
+        }
+    }
+
+    /**
+     * Resolves the org.opencontainers.image.version label of the tracked tag
+     * by fetching its manifest and config blob from Docker Hub's registry API
+     */
+    async getVersionLabel(): Promise<string | null> {
+        try {
+            const repoPath = this.image.replace('lscr.io/', '');
+            const tokenResponse = await axios.get(
+                `https://auth.docker.io/token?service=registry.docker.io&scope=repository:${repoPath}:pull`
+            );
+            const headers = { Authorization: `Bearer ${tokenResponse.data.token}` };
+
+            const indexResponse = await axios.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
+                headers: { ...headers, Accept: 'application/json' },
+            });
+
+            let configDigest = indexResponse.data?.config?.digest;
+            if (!configDigest) return null;
+
+            const configResponse = await axios.get(`${LscrAdapter.REGISTRY_API_URL}/${repoPath}/blobs/${configDigest}`, { headers });
+            return configResponse.data?.config?.Labels?.["org.opencontainers.image.version"] ?? null;
+        } catch (error) {
+            return null;
         }
     }
 }

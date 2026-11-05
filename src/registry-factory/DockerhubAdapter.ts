@@ -1,8 +1,10 @@
 import logger from "../services/LoggerService";
 import { ImageRegistryAdapter } from "./ImageRegistryAdapter";
+import axios from "axios";
 
 export class DockerhubAdapter extends ImageRegistryAdapter {
     private static readonly DOCKER_API_URL = 'https://hub.docker.com/v2/repositories';
+    private static readonly REGISTRY_API_URL = 'https://registry-1.docker.io/v2';
     private tag: string;
 
     constructor(image: string, tag: string = 'latest', accessToken?: string) {
@@ -68,6 +70,38 @@ export class DockerhubAdapter extends ImageRegistryAdapter {
             logger.error(`Failed to check for new Docker image digest: ${error}`);
             logger.warn(`This might be a locally generated image. To prevent similar issues, exclude it from future MqDockerUp checks (see docs)`);
             throw error;
+        }
+    }
+
+    private getRepoPath(): string {
+        return this.getImageUrl()
+            .replace(`${DockerhubAdapter.DOCKER_API_URL}/`, "")
+            .replace(`/tags/${this.tag}`, "");
+    }
+
+    /**
+     * Resolves the org.opencontainers.image.version label of the tracked tag
+     * by fetching its manifest and config blob from Docker Hub's registry API
+     */
+    async getVersionLabel(): Promise<string | null> {
+        try {
+            const repoPath = this.getRepoPath();
+            const tokenResponse = await axios.get(
+                `https://auth.docker.io/token?service=registry.docker.io&scope=repository:${repoPath}:pull`
+            );
+            const headers = { Authorization: `Bearer ${tokenResponse.data.token}` };
+
+            const indexResponse = await axios.get(`${DockerhubAdapter.REGISTRY_API_URL}/${repoPath}/manifests/${this.tag}`, {
+                headers: { ...headers, Accept: 'application/json' },
+            });
+
+            let configDigest = indexResponse.data?.config?.digest;
+            if (!configDigest) return null;
+
+            const configResponse = await axios.get(`${DockerhubAdapter.REGISTRY_API_URL}/${repoPath}/blobs/${configDigest}`, { headers });
+            return configResponse.data?.config?.Labels?.["org.opencontainers.image.version"] ?? null;
+        } catch (error) {
+            return null;
         }
     }
 }
