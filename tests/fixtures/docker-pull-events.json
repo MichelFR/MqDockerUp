@@ -1,0 +1,263 @@
+{
+  "layerSizes": {
+    "7b229517ed22": 3853109,
+    "ca8079233535": 935,
+    "2eb41f39407f": 145,
+    "4f4fb700ef54": 32,
+    "8653f63a2a1a": 11021500,
+    "f55ab9d5f59a": 5838271,
+    "8fa5871deb7f": 288
+  },
+  "events": [
+    {
+      "status": "Pulling from library/httpd",
+      "id": "2.4-alpine"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "8fa5871deb7f"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "4f4fb700ef54"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "2eb41f39407f"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "7b229517ed22"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "ca8079233535"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "f55ab9d5f59a"
+    },
+    {
+      "status": "Pulling fs layer",
+      "progressDetail": {},
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Already exists",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "7b229517ed22"
+    },
+    {
+      "status": "Already exists",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "4f4fb700ef54"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "2eb41f39407f"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "ca8079233535"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "8fa5871deb7f"
+    },
+    {
+      "status": "Pull complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "ca8079233535"
+    },
+    {
+      "status": "Downloading",
+      "progressDetail": {
+        "current": 3145728,
+        "total": 5838271
+      },
+      "id": "f55ab9d5f59a"
+    },
+    {
+      "status": "Pull complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "4f4fb700ef54"
+    },
+    {
+      "status": "Pull complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "2eb41f39407f"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "ac03b5fe9bbf"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "f55ab9d5f59a"
+    },
+    {
+      "status": "Downloading",
+      "progressDetail": {
+        "current": 3145728,
+        "total": 11021500
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Downloading",
+      "progressDetail": {
+        "current": 1183982,
+        "total": 1183982
+      },
+      "id": "4f7ae5ccbe66"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Download complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "4f7ae5ccbe66"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "f55ab9d5f59a"
+    },
+    {
+      "status": "Pull complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "8653f63a2a1a"
+    },
+    {
+      "status": "Extracting",
+      "progressDetail": {
+        "current": 1,
+        "units": "s"
+      },
+      "id": "f55ab9d5f59a"
+    },
+    {
+      "status": "Pull complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "8fa5871deb7f"
+    },
+    {
+      "status": "Pull complete",
+      "progressDetail": {
+        "hidecounts": true
+      },
+      "id": "f55ab9d5f59a"
+    },
+    {
+      "status": "Digest: sha256:070da7661f0be8a05430b2c125c0cde9e53176b4048c813024021969a0e3893c"
+    },
+    {
+      "status": "Status: Downloaded newer image for httpd:2.4-alpine"
+    },
+    {
+      "status": "Pulling from library/httpd",
+      "id": "2.4-alpine"
+    },
+    {
+      "status": "Digest: sha256:070da7661f0be8a05430b2c125c0cde9e53176b4048c813024021969a0e3893c"
+    },
+    {
+      "status": "Status: Image is up to date for httpd:2.4-alpine"
+    },
+    {
+      "status": "Pulling from library/httpd",
+      "id": "2.4-alpine"
+    },
+    {
+      "status": "Digest: sha256:070da7661f0be8a05430b2c125c0cde9e53176b4048c813024021969a0e3893c"
+    },
+    {
+      "status": "Status: Image is up to date for httpd:2.4-alpine"
+    }
+  ]
+}

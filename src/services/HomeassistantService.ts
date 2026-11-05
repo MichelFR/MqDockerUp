@@ -383,9 +383,10 @@ export default class HomeassistantService {
 
     const deviceName = TopicService.getDeviceName(container);
     const updateTopic = TopicService.getUpdateTopic(deviceName);
-    const updatePayload = update_percentage && in_progress
-      ? { update_percentage, in_progress }
-      : { update_percentage: null, in_progress: false };
+    const updatePayload = {
+      update_percentage: in_progress ? update_percentage : null,
+      in_progress,
+    };
 
     this.publishMessage(client, updateTopic, updatePayload, {retain: false});
   }
@@ -400,6 +401,9 @@ export default class HomeassistantService {
    * @param client
    */
   public static async publishImageUpdateMessage(container: any, client: any) {
+    if (DockerService.updatingContainers.includes(typeof container === "string" ? container : container.Id)) {
+      return;
+    }
     if (typeof container === "string") {
       try {
         container = await DockerService.docker
@@ -470,7 +474,9 @@ export default class HomeassistantService {
       update_percentage: null,
     };
 
-    this.publishMessage(client, updateTopic, updatePayload, {retain: true});
+    if (!DockerService.updatingContainers.includes(container.Id)) {
+      this.publishMessage(client, updateTopic, updatePayload, {retain: true});
+    }
   }
 
   /**
