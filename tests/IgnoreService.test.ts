@@ -8,6 +8,7 @@ jest.mock("../src/index", () => ({
 
 import IgnoreService from "../src/services/IgnoreService";
 import { ContainerInfo, ContainerInspectInfo } from "dockerode";
+import SelfUpdateService from "../src/services/SelfUpdateService";
 
 // Builds a minimal ContainerInfo (as returned by listContainers).
 function makeContainerInfo(names: string[], labels: Record<string, string> = {}): ContainerInfo {
@@ -33,6 +34,28 @@ function loadIgnoreServiceWithEnv(env: Record<string, string>): typeof IgnoreSer
 }
 
 describe('IgnoreService.ignoreUpdates', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  test("only enables self-updates for this identified, recoverable instance", () => {
+    const id = "a".repeat(64);
+    jest.spyOn(SelfUpdateService, "getContainerId").mockReturnValue(id);
+    const container: any = {Id: id, Name: "/mqdockerup", Config: {Image: "micrib/mqdockerup:latest", Labels: {}},
+      HostConfig: {}, Mounts: [{Type: "bind", Destination: "/var/run/docker.sock"}]};
+    expect(IgnoreService.ignoreUpdates(container)).toBe(false);
+    container.Config.Labels["mqdockerup.ignore_updates"] = "true";
+    expect(IgnoreService.ignoreUpdates(container)).toBe(true);
+    container.Config.Labels = {};
+    container.Id = "b".repeat(64);
+    expect(IgnoreService.ignoreUpdates(container)).toBe(true);
+  });
+
+  test("internal helpers and the predecessor never become discovered entities", () => {
+    expect(IgnoreService.ignoreContainer({Names: ["/helper"], Labels: {[SelfUpdateService.helperLabel]: "old"}} as any)).toBe(true);
+    process.env[SelfUpdateService.predecessorVariable] = "old";
+    try {
+      expect(IgnoreService.ignoreContainer({Id: "old", Names: ["/renamed-old"], Labels: {}} as any)).toBe(true);
+    } finally { delete process.env[SelfUpdateService.predecessorVariable]; }
+  });
   const cases: Array<[string, string, boolean]> = [
     ['mqdockerup:latest', '/mqdockerup', true],
     ['MqDockerUp:v1.22.1', '/MqDockerUp', true],

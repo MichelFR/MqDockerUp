@@ -1,6 +1,7 @@
 import { ContainerInspectInfo, ContainerInfo } from "dockerode";
 import ConfigService from "./ConfigService";
 import logger from "./LoggerService";
+import SelfUpdateService from "./SelfUpdateService";
 
 const config = ConfigService.getConfig();
 
@@ -18,6 +19,10 @@ export default class IgnoreService {
    * @returns A boolean indicating if the container should be ignored.
    */
   public static ignoreContainer(container: ContainerInfo) {
+    if (container.Labels?.[SelfUpdateService.helperLabel] ||
+      container.Id === process.env[SelfUpdateService.predecessorVariable] && !!container.Id) {
+      return true;
+    }
     // Ignore every container.
     if (config?.ignore?.containers === "*") {
       return true;
@@ -50,11 +55,11 @@ export default class IgnoreService {
    * Checks if a container should be ignored for updates based on its labels and/or environment variables.
    * A container is ignored if it has the label "mqdockerup.ignore_updates" set to "true" and/or its
    * name is included in the list of, comma separated, ignored containers in the configuration file or the environment variable "IGNORE_UPDATES" for docker, `*` to apply to all containers.
-   * Additionally, MqDockerUp containers are automatically ignored to prevent self-updates.
+   * Other MqDockerUp instances remain ignored; only this instance can hand off its self-update.
    *
    * When a monitor (whitelist) is configured via `monitor.updates` / "MONITOR_UPDATES" or the label
    * "mqdockerup.monitor_updates", only the listed containers are checked for updates and every other
-   * container is ignored. An explicit ignore (label, list or the MqDockerUp self-ignore) always wins.
+   * container is ignored. An explicit ignore (label or list) always wins.
    *
    * @param container The container to check.
    * @returns A boolean indicating if the container should be ignored for updates.
@@ -65,8 +70,8 @@ export default class IgnoreService {
       return true;
     }
 
-    // Always ignore MqDockerUp containers to prevent self-updates.
-    if (this.ignoreMQDockerUpContainers(container)) {
+    // Only this identified instance can hand off its own update safely.
+    if (this.ignoreMQDockerUpContainers(container) && !SelfUpdateService.canUpdate(container)) {
       return true;
     }
 
