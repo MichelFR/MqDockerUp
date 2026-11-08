@@ -42,9 +42,13 @@ export default class DockerService {
         return;
       }
 
-      data.on('data', (chunk: any) => {
+      let buffer = '';
+      let skippingEvent = false;
+      const maxEventLength = 1024 * 1024;
+
+      const processEvent = (line: string) => {
         try {
-          const event = JSON.parse(chunk.toString());
+          const event = JSON.parse(line);
 
           if (event.Type === 'container') {
             const containerName = event.Actor.Attributes.name;
@@ -58,8 +62,37 @@ export default class DockerService {
             }
           }
         } catch (error) {
-          logger.error('Error parsing Docker event JSON:', error, 'Chunk:', chunk.toString());
+          logger.error('Error parsing Docker event JSON:', error, 'Chunk:', line);
         }
+      };
+
+      // Docker streams newline-delimited JSON, not one event per data chunk.
+      // Stream decoding also preserves UTF-8 characters split between chunks.
+      data.setEncoding('utf8');
+      data.on('data', (chunk: string) => {
+        const lines = chunk.split('\n');
+        for (let index = 0; index < lines.length; index++) {
+          if (!skippingEvent) {
+            if (buffer.length + lines[index].length > maxEventLength) {
+              logger.error('Docker event exceeded maximum length; skipping event.');
+              buffer = '';
+              skippingEvent = true;
+            } else {
+              buffer += lines[index];
+            }
+          }
+
+          if (index < lines.length - 1) {
+            if (!skippingEvent && buffer.trim()) processEvent(buffer);
+            buffer = '';
+            skippingEvent = false;
+          }
+        }
+      });
+
+      data.on('end', () => {
+        if (!skippingEvent && buffer.trim()) processEvent(buffer);
+        buffer = '';
       });
 
       data.on('error', (error: any) => {
