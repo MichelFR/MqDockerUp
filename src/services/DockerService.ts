@@ -9,6 +9,7 @@ import DatabaseService from "./DatabaseService";
 import axios, { AxiosInstance } from 'axios';
 import {mqttClient} from "../index";
 import PullProgressService from "./PullProgressService";
+import SelfUpdateService from "./SelfUpdateService";
 
 /**
  * Represents a Docker service for managing Docker containers and images.
@@ -17,6 +18,7 @@ export default class DockerService {
   public static docker = new Docker();
   public static events = new EventEmitter();
   public static updatingContainers: string[] = [];
+  public static selfUpdateContainerId: string | undefined;
   /** Source repository URL per image reference; null marks a lookup that found nothing. */
   public static SourceUrlCache = new Map<string, string | null>();
 
@@ -299,6 +301,10 @@ export default class DockerService {
     if (this.updatingContainers.includes(containerId)) {
       return;
     }
+    if (this.selfUpdateContainerId) {
+      logger.warn(`Cannot update ${containerId} while MqDockerUp is updating itself`);
+      return;
+    }
     this.updatingContainers.push(containerId);
     let progressInfo: ContainerInspectInfo | null = null;
     let replacementId: string | undefined;
@@ -321,6 +327,15 @@ export default class DockerService {
 
       if (info) {
         progressInfo = info;
+        if (info.Config.Image.toLowerCase().includes("mqdockerup") && !SelfUpdateService.canUpdate(info)) {
+          throw new Error("Cannot safely hand off an unidentified or unsupported MqDockerUp container");
+        }
+        if (SelfUpdateService.isSelf(info)) {
+          if (this.updatingContainers.some(id => id !== containerId)) {
+            throw new Error("Other container updates must finish before updating MqDockerUp");
+          }
+          this.selfUpdateContainerId = containerId;
+        }
         const oldImageId = info.Image;
         const image = info.Config.Image;
         const imageName = image.split(":")[0];
@@ -356,6 +371,12 @@ export default class DockerService {
                   // The pull has completed. Keep its measured completion visible
                   // until replacement finishes instead of returning HA to preparing.
                   await HomeassistantService.publishUpdateProgressMessage(info, mqttClient, reliableProgress ? 100 : null, true);
+
+                  if (SelfUpdateService.isSelf(info)) {
+                    await SelfUpdateService.start(DockerService.docker, info);
+                    resolve();
+                    return;
+                  }
 
                   const { endpointsConfig, primaryNetwork } = DockerService.buildNetworkEndpointsConfig(info, containerId);
 
@@ -521,6 +542,7 @@ export default class DockerService {
         await HomeassistantService.publishAbortUpdateMessage(progressInfo, mqttClient);
       }
     } finally {
+      if (this.selfUpdateContainerId === containerId) this.selfUpdateContainerId = undefined;
       this.updatingContainers = this.updatingContainers.filter((id) => id !== containerId && id !== replacementId);
     }
   }

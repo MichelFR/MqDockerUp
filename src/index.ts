@@ -6,6 +6,7 @@ import DatabaseService from "./services/DatabaseService";
 import MigrationService from "./services/MigrationService";
 import TimeService from "./services/TimeService";
 import logger from "./services/LoggerService"
+import SelfUpdateService from "./services/SelfUpdateService";
 const _ = require('lodash');
 
 require('source-map-support').install();
@@ -14,6 +15,12 @@ const config = ConfigService.getConfig();
 const baseTopic: string = config.mqtt.topic;
 const availabilityTopic = `${baseTopic}/availability`;
 const isContainerCheckOnChangesEnabled = ConfigService.autoParseEnvVariable(config.main.containerCheckOnChanges) !== false;
+
+// Forget the predecessor before any Docker event can clear its discovery.
+const predecessorId = process.env[SelfUpdateService.predecessorVariable];
+const discoveryHandoff = predecessorId && /^[a-f0-9]{64}$/.test(predecessorId)
+  ? DatabaseService.deleteContainer(predecessorId) : Promise.resolve();
+discoveryHandoff.catch(error => logger.error("Self-update discovery handoff failed:", error));
 
 const client = mqtt.connect(config.mqtt.connectionUri, {
   username: config.mqtt.username,
@@ -92,6 +99,8 @@ const checkAndPublishImageUpdateMessages = async (): Promise<void> => {
  */
 const refreshContainer = async (containerId: string, renamed = false): Promise<void> => {
   try {
+    await discoveryHandoff;
+    if (containerId === predecessorId) return;
     if (renamed) {
       // Topics are keyed by container name; clear the ones under the old name.
       await HomeassistantService.removeContainer(client, containerId);
@@ -146,6 +155,8 @@ client.on('connect', async function () {
   // everything has to be published again.
   HomeassistantService.resetPublishCache();
 
+  await discoveryHandoff;
+
   await HomeassistantService.publishAvailability(client, true);
 
   // One-off cleanup of legacy (image-based) discovery topics before publishing
@@ -160,6 +171,26 @@ client.on('connect', async function () {
     if (!intervalsStarted) startContainerCheckingInterval();
   }
 
+  // A successful self-replacement completes even when its registry cannot
+  // provide version metadata. Do not leave HA's progress active until a lookup.
+  if (predecessorId && /^[a-f0-9]{64}$/.test(predecessorId)) {
+    const selfId = SelfUpdateService.getContainerId();
+    if (selfId) {
+      const self = await DockerService.docker.getContainer(selfId).inspect();
+      await HomeassistantService.publishUpdateProgressMessage(self, client, 100, false);
+    }
+  }
+
+  client.subscribe(Object.keys(commands).map((command) => `${baseTopic}/${command}`), (error, granted) => {
+    if (error || granted?.some(subscription => subscription.qos === 128)) {
+      logger.error("Failed to subscribe to container commands:", error);
+      return;
+    }
+    if (client.connected) SelfUpdateService.markReady();
+  });
+
+  // Registry checks can take much longer than local discovery. Command
+  // subscriptions must be ready before they can block the self-update handoff.
   if (config?.ignore?.updates == "*") {
     logger.warn('Skipping setup of image update checking cause all containers update is ignored `ignore.updates="*"`.')
   } else {
@@ -167,12 +198,11 @@ client.on('connect', async function () {
     if (!intervalsStarted) startImageCheckingInterval();
   }
   intervalsStarted = true;
-
-  client.subscribe(Object.keys(commands).map((command) => `${baseTopic}/${command}`));
 });
 
 client.on('close', () => {
   isConnected = false;
+  SelfUpdateService.clearReady();
 });
 
 // Connection errors (e.g. "connack timeout") are recoverable: mqtt.js reconnects
@@ -268,13 +298,14 @@ const exitHandler = async (exitCode: number, error?: any) => {
   isExiting = true;
 
   try {
+    SelfUpdateService.clearReady();
     logger.info("Shutting down MqDockerUp...");
 
     if (isConnected) {
       await HomeassistantService.publishAvailability(client, false);
     }
 
-    const updatingContainers = DockerService.updatingContainers;
+    const updatingContainers = DockerService.updatingContainers.filter(id => id !== SelfUpdateService.handoffContainerId);
 
     if (updatingContainers.length > 0) {
       logger.warn(

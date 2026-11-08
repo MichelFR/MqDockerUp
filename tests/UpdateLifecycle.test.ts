@@ -15,6 +15,7 @@ jest.mock("../src/services/HomeassistantService", () => ({
 import DockerService from "../src/services/DockerService";
 import HomeassistantService from "../src/services/HomeassistantService";
 import PullProgressService from "../src/services/PullProgressService";
+import SelfUpdateService from "../src/services/SelfUpdateService";
 
 describe("DockerService update progress lifecycle", () => {
   const info = { Id: "old", Name: "/example", Image: "image-id", Config: { Image: "example:latest" }, HostConfig: {}, State: { Running: true } };
@@ -27,6 +28,7 @@ describe("DockerService update progress lifecycle", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     DockerService.updatingContainers = [];
+    DockerService.selfUpdateContainerId = undefined;
     (PullProgressService.getLayerSizes as jest.Mock).mockResolvedValue({ layer: 100 });
     old = { inspect: jest.fn().mockResolvedValue(info), stop: jest.fn(), rename: jest.fn(), remove: jest.fn(), start: jest.fn() };
     replacement = { id: "new", start: jest.fn(), remove: jest.fn(), inspect: jest.fn().mockResolvedValue({ ...info, Id: "new" }) };
@@ -99,6 +101,47 @@ describe("DockerService update progress lifecycle", () => {
     expect(pull).toHaveBeenCalledTimes(1);
     finish(null);
     await operation;
+  });
+  test("self-update delegates to a helper without stopping its own process", async () => {
+    jest.spyOn(SelfUpdateService, "isSelf").mockReturnValue(true);
+    const start = jest.spyOn(SelfUpdateService, "start").mockResolvedValue();
+    const { operation } = await begin();
+    finish(null);
+    await operation;
+    expect(start).toHaveBeenCalledWith(DockerService.docker, info);
+    expect(old.stop).not.toHaveBeenCalled();
+    expect(DockerService.docker.createContainer).not.toHaveBeenCalled();
+  });
+  test("helper creation failure clears active progress without stopping this instance", async () => {
+    jest.spyOn(SelfUpdateService, "isSelf").mockReturnValue(true);
+    jest.spyOn(SelfUpdateService, "start").mockRejectedValue(new Error("helper failed"));
+    const { operation } = await begin();
+    finish(null);
+    await operation;
+    expect(old.stop).not.toHaveBeenCalled();
+    expect(HomeassistantService.publishAbortUpdateMessage).toHaveBeenCalledWith(info, {});
+    expect(DockerService.updatingContainers).toEqual([]);
+    expect(DockerService.selfUpdateContainerId).toBeUndefined();
+  });
+  test("self-update refuses to interrupt an already active container update", async () => {
+    jest.spyOn(SelfUpdateService, "isSelf").mockReturnValue(true);
+    DockerService.updatingContainers = ["another"];
+    await DockerService.updateContainer("old");
+    expect(pull).not.toHaveBeenCalled();
+    expect(old.stop).not.toHaveBeenCalled();
+    expect(DockerService.updatingContainers).toEqual(["another"]);
+    expect(DockerService.selfUpdateContainerId).toBeUndefined();
+  });
+  test("new updates cannot begin while the self-update handoff is pending", async () => {
+    jest.spyOn(SelfUpdateService, "isSelf").mockReturnValue(true);
+    jest.spyOn(SelfUpdateService, "start").mockResolvedValue();
+    const { operation } = await begin();
+    expect(DockerService.selfUpdateContainerId).toBe("old");
+    await DockerService.updateContainer("another");
+    expect(pull).toHaveBeenCalledTimes(1);
+    finish(null);
+    await operation;
+    expect(DockerService.selfUpdateContainerId).toBeUndefined();
   });
   test("missing manifest metadata keeps the whole update active without a percentage", async () => {
     (PullProgressService.getLayerSizes as jest.Mock).mockResolvedValue(null);
